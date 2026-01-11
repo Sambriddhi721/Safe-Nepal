@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "SafeNepalApp",
+    "slug": "SafeNepalApp",
+    "version": "1.0.0",
+    "scheme": "safenepalapp",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0,
+      "url": null
+    },
+    "runtimeVersion": "1.0.0",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0E1621"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.esprihya.safenepalapp"
+    },
+    "android": {
+      "package": "com.esprihya.safenepalapp",
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDummyKeyForDevelopmentOnly123456789"
+        }
+      }
+    },
+    "extra": {
+      "googleClientIdAndroid": "YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com",
+      "googleClientIdIOS": "YOUR_IOS_CLIENT_ID.apps.googleusercontent.com",
+      "googleClientIdWeb": "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com",
+      "eas": {
+        "projectId": "17cb65ce-f6dd-44f7-900d-87a0ac153076"
+      }
+    }
+  }
+}

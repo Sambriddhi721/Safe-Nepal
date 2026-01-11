@@ -1,10 +1,17 @@
+import os
 import pickle
 import numpy as np
 from config import MODEL_PATH, SCALER_PATH
 
 # =========================
-# LOAD MODEL ONCE
+# LOAD MODEL & SCALER ONCE
 # =========================
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
+
+if not os.path.exists(SCALER_PATH):
+    raise FileNotFoundError(f"Scaler file not found: {SCALER_PATH}")
+
 with open(MODEL_PATH, "rb") as f:
     model = pickle.load(f)
 
@@ -14,8 +21,8 @@ with open(SCALER_PATH, "rb") as f:
 
 def predict_disaster(data: dict) -> str:
     """
-    data: dict with weather values
-    returns: "Normal" | "Flood" | "Landslide"
+    Input: weather data dictionary
+    Output: "Normal" | "Flood" | "Landslide"
     """
 
     try:
@@ -39,14 +46,15 @@ def predict_disaster(data: dict) -> str:
             data["Kathmandu_rh"],
         ]])
 
-        scaled = scaler.transform(features)
-        prediction = model.predict(scaled)[0]
+        scaled_features = scaler.transform(features)
+        prediction = model.predict(scaled_features)[0]
 
         if prediction == 1:
             return "Flood"
         elif prediction == 2:
             return "Landslide"
-        return "Normal"
+        else:
+            return "Normal"
 
     except KeyError as e:
         return f"Missing input field: {e}"

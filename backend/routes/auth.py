@@ -1,9 +1,36 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from db.models import db, User
+from flask_mail import Message
+from extensions import mail, serializer
 
 auth_bp = Blueprint("auth", __name__)
+
+# =========================
+# SEND VERIFICATION EMAIL
+# =========================
+def send_verification_email(email):
+    token = serializer.dumps(email, salt="email-confirm")
+
+    verify_url = f"http://192.168.111.72:5000/api/auth/verify/{token}"
+
+    msg = Message(
+        subject="Verify Your Safe Nepal Account",
+        sender="noreply@safenepal.com",
+        recipients=[email]
+    )
+
+    msg.body = f"""
+Welcome to Safe Nepal!
+
+Click the link below to verify your email:
+{verify_url}
+
+If you didn’t create this account, ignore this email.
+"""
+
+    mail.send(msg)
 
 # =========================
 # REGISTER
@@ -12,22 +39,10 @@ auth_bp = Blueprint("auth", __name__)
 def register():
     data = request.json
 
-    full_name = data.get("full_name")
-    email = data.get("email")
-    password = data.get("password")
-
-    if not full_name or not email or not password:
-        return jsonify({"message": "Missing fields"}), 400
-
-    existing_user = User.query.filter_by(email=email).first()
-    if existing_user:
-        return jsonify({"message": "Email already registered"}), 409
-
-    # Default role = USER
     user = User(
-        full_name=full_name,
-        email=email,
-        password=generate_password_hash(password),
+        full_name=data["full_name"],
+        email=data["email"],
+        password=generate_password_hash(data["password"]),
         role="USER",
         email_verified=False
     )
@@ -35,8 +50,9 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    return jsonify({"message": "Registered successfully"}), 201
+    send_verification_email(user.email)
 
+    return jsonify({"message": "Registered. Please verify your email."}), 201
 
 # =========================
 # LOGIN
@@ -44,17 +60,12 @@ def register():
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.json
+    user = User.query.filter_by(email=data["email"]).first()
 
-    email = data.get("email")
-    password = data.get("password")
-
-    user = User.query.filter_by(email=email).first()
-
-    if not user or not check_password_hash(user.password, password):
+    if not user or not check_password_hash(user.password, data["password"]):
         return jsonify({"message": "Invalid credentials"}), 401
 
-    # 🔴 CORRECT JWT STRUCTURE
-    access_token = create_access_token(
+    token = create_access_token(
         identity=user.id,
         additional_claims={
             "role": user.role,
@@ -63,10 +74,23 @@ def login():
     )
 
     return jsonify({
-        "access_token": access_token,
+        "access_token": token,
         "user": {
             "id": user.id,
             "role": user.role,
             "email_verified": user.email_verified
         }
     }), 200
+
+# =========================
+# CURRENT USER
+# =========================
+@auth_bp.route("/me", methods=["GET"])
+@jwt_required()
+def me():
+    user = User.query.get(get_jwt_identity())
+    return jsonify({
+        "email": user.email,
+        "role": user.role,
+        "email_verified": user.email_verified
+    })
