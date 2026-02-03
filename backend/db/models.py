@@ -9,13 +9,21 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password = db.Column(db.String(255), nullable=False)  # Hashed password
+    
+    # Updated: nullable=True because social users don't have a password
+    password = db.Column(db.String(255), nullable=True)  
+    
     role = db.Column(db.String(20), default="USER")  # USER | HELPER | POLICE
     email_verified = db.Column(db.Boolean, default=False)
+    
+    # New: Social Media IDs to link accounts
+    google_id = db.Column(db.String(255), unique=True, nullable=True)
+    facebook_id = db.Column(db.String(255), unique=True, nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    sos_requests = db.relationship('SOSRequest', backref='user', lazy=True)
+    sos_requests = db.relationship('SOSRequest', backref='user', lazy=True, foreign_keys='SOSRequest.user_id')
     email_verifications = db.relationship('EmailVerification', backref='user', lazy=True)
 
     def __repr__(self):
@@ -30,9 +38,6 @@ class EmailVerification(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def __repr__(self):
-        return f'<EmailVerification for User {self.user_id}>'
-
 class SOSRequest(db.Model):
     __tablename__ = 'sos_request'
 
@@ -42,9 +47,9 @@ class SOSRequest(db.Model):
     latitude = db.Column(db.Float, nullable=False)
     longitude = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default="PENDING")  # PENDING / ACCEPTED / RESOLVED
-    helper_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Who accepted it
+    
+    # Link to the helper (another User)
+    helper_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    def __repr__(self):
-        return f'<SOSRequest {self.id} by User {self.user_id} - Status: {self.status}>'

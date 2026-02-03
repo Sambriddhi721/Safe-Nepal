@@ -5,235 +5,104 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  Platform, // FIXED: Added missing Platform import
+  Linking
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
-export default function EmergencyContactsScreen() {
+export default function EmergencyContactsScreen({ navigation }) {
+
+  const handleAction = (type, number) => {
+    let url = "";
+    if (type === 'tel') {
+      url = `tel:${number}`;
+    } else if (type === 'sms') {
+      const message = "EMERGENCY! I need immediate help. Please track my phone.";
+      // FIXED: Platform.OS now works because it is imported
+      url = `sms:${number}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
+    }
+
+    Linking.openURL(url).catch(() => {
+      Alert.alert("Error", "Your device does not support this action.");
+    });
+  };
+
+  const ContactCard = ({ title, number, icon, color }) => (
+    <View style={styles.card}>
+      <View style={styles.row}>
+        <View style={[styles.iconCircle, { backgroundColor: color }]}>
+          <MaterialIcons name={icon} size={22} color="#fff" />
+        </View>
+        <View style={styles.info}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.sub}>{number}</Text>
+        </View>
+      </View>
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.callBtn} onPress={() => handleAction('tel', number)}>
+          <Ionicons name="call" size={16} color="#fff" />
+          <Text style={styles.btnText}> Call Now</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.sosBtn} onPress={() => handleAction('sms', number)}>
+          <Ionicons name="chatbubble-ellipses" size={16} color="#fff" />
+          <Text style={styles.btnText}> Send SOS</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
-    <LinearGradient colors={["#000000", "#121212"]} style={styles.container}>
-      {/* HEADER */}
+    <LinearGradient colors={["#0f172a", "#1e293b"]} style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Emergency Contacts</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+           <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Nepal Emergency Services</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* CONTACT CARD */}
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.iconCircle}>
-              <MaterialIcons name="local-police" size={22} color="#fff" />
-            </View>
-            <View style={styles.info}>
-              <Text style={styles.title}>Nepal Police</Text>
-              <Text style={styles.sub}>100</Text>
-            </View>
-          </View>
+        <ContactCard title="Nepal Police" number="100" icon="local-police" color="#0d47a1" />
+        <ContactCard title="Fire Brigade" number="101" icon="fire-truck" color="#d32f2f" />
+        <ContactCard title="Ambulance" number="102" icon="medical-services" color="#388e3c" />
+        <ContactCard title="Traffic Police" number="103" icon="traffic" color="#fbc02d" />
 
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.callBtn}>
-              <Ionicons name="call" size={16} color="#fff" />
-              <Text style={styles.btnText}> Call</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.msgBtn}>
-              <Ionicons name="chatbubble" size={16} color="#fff" />
-              <Text style={styles.btnText}> Message</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* AMBULANCE */}
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.iconCircle}>
-              <FontAwesome5 name="ambulance" size={18} color="#fff" />
-            </View>
-            <View style={styles.info}>
-              <Text style={styles.title}>Ambulance / Hospital</Text>
-              <Text style={styles.sub}>102</Text>
-            </View>
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.callBtn}>
-              <Ionicons name="call" size={16} color="#fff" />
-              <Text style={styles.btnText}> Call</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.msgBtn}>
-              <Ionicons name="chatbubble" size={16} color="#fff" />
-              <Text style={styles.btnText}> Message</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* FIRE */}
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.iconCircle}>
-              <MaterialIcons name="local-fire-department" size={20} color="#fff" />
-            </View>
-            <View style={styles.info}>
-              <Text style={styles.title}>Fire Department</Text>
-              <Text style={styles.sub}>101</Text>
-            </View>
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.callBtn}>
-              <Ionicons name="call" size={16} color="#fff" />
-              <Text style={styles.btnText}> Call</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.msgBtn}>
-              <Ionicons name="chatbubble" size={16} color="#fff" />
-              <Text style={styles.btnText}> Message</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* MY CONTACTS */}
-        <Text style={styles.sectionTitle}>My Contacts</Text>
-
+        <Text style={styles.sectionTitle}>Personal Safety Tip</Text>
         <View style={styles.addBox}>
           <Text style={styles.addText}>
-            Add personal contacts for quick access during an emergency.
+            In case of disaster, stay calm and call 100. Always keep your GPS turned on so responders can find you.
           </Text>
         </View>
       </ScrollView>
 
-      {/* FLOATING ADD BUTTON */}
-      <TouchableOpacity style={styles.fab}>
-        <Ionicons name="add" size={26} color="#fff" />
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => Alert.alert("Feature Coming Soon", "The ability to add custom personal contacts is currently in development.")}
+      >
+        <Ionicons name="person-add" size={26} color="#fff" />
       </TouchableOpacity>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  header: {
-    paddingTop: 55,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-  },
-
-  headerTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
-  },
-
-  card: {
-    backgroundColor: "#1b1b1b",
-    marginHorizontal: 16,
-    marginBottom: 14,
-    borderRadius: 16,
-    padding: 14,
-  },
-
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#0d47a1",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-
-  info: {
-    flex: 1,
-  },
-
-  title: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-
-  sub: {
-    color: "#aaa",
-    fontSize: 12,
-  },
-
-  actionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-
-  callBtn: {
-    flex: 1,
-    backgroundColor: "#e53935",
-    paddingVertical: 10,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
-    flexDirection: "row",
-  },
-
-  msgBtn: {
-    flex: 1,
-    backgroundColor: "#1e90ff",
-    paddingVertical: 10,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-    flexDirection: "row",
-  },
-
-  btnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-
-  sectionTitle: {
-    color: "#fff",
-    fontWeight: "700",
-    marginTop: 18,
-    marginBottom: 10,
-    marginHorizontal: 16,
-  },
-
-  addBox: {
-    marginHorizontal: 16,
-    borderRadius: 14,
-    borderColor: "#555",
-    borderWidth: 1,
-    borderStyle: "dashed",
-    padding: 18,
-    alignItems: "center",
-  },
-
-  addText: {
-    color: "#aaa",
-    fontSize: 12,
-    textAlign: "center",
-  },
-
-  fab: {
-    position: "absolute",
-    bottom: 26,
-    right: 26,
-    width: 56,
-    height: 56,
-    backgroundColor: "#e53935",
-    borderRadius: 28,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 6,
-  },
+  container: { flex: 1 },
+  header: { paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center' },
+  backBtn: { marginRight: 15 },
+  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "bold" },
+  card: { backgroundColor: "#1e293b", marginHorizontal: 16, marginBottom: 14, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },
+  row: { flexDirection: "row", alignItems: "center" },
+  iconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center", marginRight: 12 },
+  info: { flex: 1 },
+  title: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  sub: { color: "#94a3b8", fontSize: 13 },
+  actionRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 15 },
+  callBtn: { flex: 1, backgroundColor: "#059669", paddingVertical: 12, borderRadius: 10, justifyContent: "center", alignItems: "center", marginRight: 8, flexDirection: "row" },
+  sosBtn: { flex: 1, backgroundColor: "#dc2626", paddingVertical: 12, borderRadius: 10, justifyContent: "center", alignItems: "center", marginLeft: 8, flexDirection: "row" },
+  btnText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
+  sectionTitle: { color: "#fff", fontWeight: "700", marginTop: 20, marginBottom: 10, marginHorizontal: 16 },
+  addBox: { marginHorizontal: 16, borderRadius: 14, borderColor: "#334155", borderWidth: 1, padding: 20, alignItems: "center" },
+  addText: { color: "#94a3b8", fontSize: 13, textAlign: "center", lineHeight: 18 },
+  fab: { position: "absolute", bottom: 30, right: 30, width: 60, height: 60, backgroundColor: "#3b82f6", borderRadius: 30, justifyContent: "center", alignItems: "center", elevation: 8 },
 });

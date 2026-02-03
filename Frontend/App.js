@@ -1,69 +1,51 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View } from 'react-native';
-import { AuthProvider, AuthContext } from './src/context/AuthContext';
-//screens 
-import WelcomeScreen from './src/screens/WelcomeScreen';
-import LoginScreen from './src/screens/LoginScreen';
-import SignupScreen from './src/screens/SignupScreen';
+
+// 1. IMPORT PROVIDERS
+import { AuthProvider } from './src/context/AuthContext';
+import { ThemeProvider } from './src/context/ThemeContext';
+
+// 2. IMPORT ALL SCREENS
 import HomeScreen from './src/screens/HomeScreen';
-import RealTimeMapScreen from './src/screens/RealTimeMapScreen';
-import SOSScreen from './src/screens/SOSScreen';
 import AlertScreen from './src/screens/AlertScreen';
-import AlertDetailsScreen from './src/screens/AlertDetailsScreen'; 
-import IncidentReportScreen from './src/screens/IncidentReportScreen';
-import EmergencyContactsScreen from './src/screens/EmergencyContactsScreen';
+import AlertDetailsScreen from './src/screens/AlertDetailsScreen';
+import SOSScreen from './src/screens/SOSScreen';
+import RealTimeMapScreen from './src/screens/RealTimeMapScreen';
+import SafetyTipsScreen from './src/screens/SafetyTipsScreen';
 import PredictionAnalyticsScreen from './src/screens/PredictionAnalyticsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
-import EmailVerificationScreen from './src/screens/EmailVerificationScreen';
-import HelperDashboardScreen from './src/screens/HelperDashboardScreen';
+import EmergencyContactsScreen from './src/screens/EmergencyContactsScreen';
 import ReliefCenterScreen from './src/screens/ReliefCenterScreen'; 
-import ReliefCenterDetails from './src/screens/ReliefCenterDetails'; 
-import SafetyTipsScreen from './src/screens/SafetyTipsScreen'; 
-import SettingsScreen from './src/screens/SettingsScreen'; 
+
+import AboutScreen from './src/screens/AboutScreen';
 
 const Stack = createNativeStackNavigator();
 
-function Navigation() {
-  const { isAuthenticated, isVerifiedUser, isHelper, loading } = useContext(AuthContext);
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f2027' }}>
-        <ActivityIndicator size="large" color="#1e90ff" />
-      </View>
-    );
-  }
-
+function NavigationStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!isAuthenticated ? (
-        <Stack.Group>
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Signup" component={SignupScreen} />
-        </Stack.Group>
-      ) : !isVerifiedUser && !isHelper ? (
-        <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
-      ) : (
-        <Stack.Group>
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} />
-          <Stack.Screen name="SOS" component={SOSScreen} />
-          <Stack.Screen name="Alerts" component={AlertScreen} />
-          <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} />
-          <Stack.Screen name="IncidentReport" component={IncidentReportScreen} />
-          <Stack.Screen name="PredictionAnalytics" component={PredictionAnalyticsScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} />
-          <Stack.Screen name="ReliefCenters" component={ReliefCenterScreen} />
-          <Stack.Screen name="ReliefCenterDetails" component={ReliefCenterDetails} />
-          <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          {isHelper && <Stack.Screen name="HelperDashboard" component={HelperDashboardScreen} />}
-        </Stack.Group>
-      )}
+    <Stack.Navigator 
+      initialRouteName="Home" 
+      screenOptions={{ headerShown: false }}
+    >
+      {/* HomeScreen is first, so it opens immediately */}
+      <Stack.Screen name="Home" component={HomeScreen} />
+      
+      {/* Other Screens */}
+      <Stack.Screen name="AlertScreen" component={AlertScreen} />
+      <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} />
+      <Stack.Screen name="SOSScreen" component={SOSScreen} />
+      <Stack.Screen name="RealTimeMapScreen" component={RealTimeMapScreen} />
+      <Stack.Screen name="SafetyTipsScreen" component={SafetyTipsScreen} />
+      <Stack.Screen name="PredictionAnalyticsScreen" component={PredictionAnalyticsScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="EmergencyContactsScreen" component={EmergencyContactsScreen} />
+      
+      {/* FIXED: Changed Stack.Row to Stack.Screen */}
+      <Stack.Screen name="ReliefCenterScreen" component={ReliefCenterScreen} />
+      
+ 
+      <Stack.Screen name="AboutScreen" component={AboutScreen} />
     </Stack.Navigator>
   );
 }
@@ -71,9 +53,11 @@ function Navigation() {
 export default function App() {
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <Navigation />
-      </NavigationContainer>
+      <ThemeProvider>
+        <NavigationContainer>
+          <NavigationStack />
+        </NavigationContainer>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

@@ -1,105 +1,48 @@
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
-import axios from "axios";
 import React, { createContext, useState, useEffect, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const API_BASE = "http://192.168.111.74:5000";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
 
 export const AuthContext = createContext();
 
-async function registerForPushNotifications(token) {
-  try {
-    if (!Device.isDevice) return;
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== "granted") return;
-
-    const expoToken = (await Notifications.getExpoPushTokenAsync()).data;
-
-    try {
-      await axios.post(
-        `${API_BASE}/api/auth/push-token`,
-        { push_token: expoToken },
-        { 
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 5000
-        }
-      );
-    } catch (error) {
-      console.log("Push token registration failed:", error.message);
-    }
-  } catch (error) {
-    console.log("Push notification setup error:", error.message);
-  }
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // 1. FORCED INITIAL STATE
+  // We set a fake user and token immediately so there is no "blink" of a login screen
+  const [user, setUser] = useState({
+    id: "dev-123",
+    name: "Developer Admin",
+    email: "dev@nepaldisasterwatch.com",
+    role: "USER",
+    email_verified: true,
+  });
+  const [token, setToken] = useState("fake-dev-token");
+  const [loading, setLoading] = useState(false); // Force loading to false
 
   useEffect(() => {
-    let isMounted = true;
-    const loadAuth = async () => {
-      try {
-        const [storedToken, storedUser] = await Promise.all([
-          AsyncStorage.getItem("token"),
-          AsyncStorage.getItem("user")
-        ]);
-
-        if (isMounted && storedToken && storedUser) {
-          setToken(storedToken);
-          setUser(JSON.parse(storedUser));
-        }
-      } catch (err) {
-        console.log("Auth load error:", err.message);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    loadAuth();
-    return () => { isMounted = false; };
+    // We keep this empty for development so it doesn't try to 
+    // fetch real data or check local storage.
+    console.log("Auth System: Development Bypass Active (Home Screen Enabled)");
   }, []);
 
+  // 2. MOCK FUNCTIONS
+  // These functions won't do anything for now to prevent storage/network errors
   const signIn = async (userData, jwtToken) => {
     setUser(userData);
     setToken(jwtToken);
-    registerForPushNotifications(jwtToken);
-
-    await AsyncStorage.multiSet([
-      ["token", jwtToken],
-      ["user", JSON.stringify(userData)],
-    ]);
   };
 
   const signOut = async () => {
     setUser(null);
     setToken(null);
-    await AsyncStorage.multiRemove(["token", "user"]);
   };
 
-  /**
-   * NEW: updateUser function
-   * Used to refresh user data (like email_verified status) 
-   * without logging out and back in.
-   */
   const updateUser = async (newUserData) => {
     setUser(newUserData);
-    await AsyncStorage.setItem("user", JSON.stringify(newUserData));
   };
 
-  // Computed values for navigation logic
-  const isAuthenticated = !!token && !!user;
-  const role = user?.role || null;
-  const emailVerified = user?.email_verified || false;
-
-  const isUser = role === "USER";
-  const isHelper = role === "HELPER";
-  
-  // This is the variable your App.js navigator will use to 
-  // decide if the user sees the Verification screen or the Home screen.
-  const isVerifiedUser = isUser && emailVerified;
-
+  // 3. FORCED NAVIGATION FLAGS
+  // These variables are what your Navigation uses to decide which screen to show.
+  // By forcing them to true/false here, we bypass all login/signup logic.
   const value = useMemo(
     () => ({
       user,
@@ -107,13 +50,13 @@ export function AuthProvider({ children }) {
       loading,
       signIn,
       signOut,
-      updateUser, // Added to context
-      isAuthenticated,
-      role,
-      emailVerified,
-      isUser,
-      isHelper,
-      isVerifiedUser,
+      updateUser,
+      isAuthenticated: true,   // Always true
+      isVerifiedUser: true,    // Skips Email Verification screens
+      emailVerified: true,     // Skips Verification prompts
+      role: "USER",            // Standard user role
+      isUser: true,
+      isHelper: false,
     }),
     [user, token, loading]
   );

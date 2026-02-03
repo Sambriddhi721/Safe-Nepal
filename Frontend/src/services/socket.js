@@ -1,6 +1,5 @@
 import { io } from "socket.io-client";
-
-const API_BASE = "http://10.23.0.48:5000";
+import { API_BASE } from "../config";
 
 // Create socket with error handling and timeout
 export const socket = io(API_BASE, {

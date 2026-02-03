@@ -1,72 +1,71 @@
+import requests
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from flask import Blueprint, request, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token
 from db.models import db, User
-from flask_mail import Message
-from extensions import mail, serializer
 
+# Initialize the Blueprint correctly
 auth_bp = Blueprint("auth", __name__)
 
-# =========================
-# SEND VERIFICATION EMAIL
-# =========================
-def send_verification_email(email):
-    token = serializer.dumps(email, salt="email-confirm")
+# REPLACE with your actual Client ID from Google Cloud Console
+GOOGLE_CLIENT_ID = "YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com"
 
-    verify_url = f"http://192.168.111.72:5000/api/auth/verify/{token}"
-
-    msg = Message(
-        subject="Verify Your Safe Nepal Account",
-        sender="noreply@safenepal.com",
-        recipients=[email]
-    )
-
-    msg.body = f"""
-Welcome to Safe Nepal!
-
-Click the link below to verify your email:
-{verify_url}
-
-If you didn’t create this account, ignore this email.
-"""
-
-    mail.send(msg)
-
-# =========================
-# REGISTER
-# =========================
-@auth_bp.route("/register", methods=["POST"])
-def register():
+@auth_bp.route("/social-login", methods=["POST"])
+def social_login():
     data = request.json
+    provider = data.get("provider")
+    token = data.get("token")
+    user_info = None
 
-    user = User(
-        full_name=data["full_name"],
-        email=data["email"],
-        password=generate_password_hash(data["password"]),
-        role="USER",
-        email_verified=False
-    )
+    # --- VERIFY GOOGLE ---
+    if provider == "google":
+        try:
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+            user_info = {
+                "email": idinfo['email'],
+                "full_name": idinfo.get('name', 'Google User'),
+                "google_id": idinfo['sub'],
+                "verified": idinfo.get('email_verified', False)
+            }
+        except Exception as e:
+            return jsonify({"message": f"Invalid Google Token: {str(e)}"}), 400
 
-    db.session.add(user)
-    db.session.commit()
+    # --- VERIFY FACEBOOK ---
+    elif provider == "facebook":
+        fb_url = f"https://graph.facebook.com/me?fields=id,name,email&access_token={token}"
+        fb_res = requests.get(fb_url).json()
+        if "error" in fb_res:
+            return jsonify({"message": "Invalid Facebook Token"}), 400
+        user_info = {
+            "email": fb_res.get("email"),
+            "full_name": fb_res.get("name"),
+            "facebook_id": fb_res.get("id"),
+            "verified": True 
+        }
 
-    send_verification_email(user.email)
+    if not user_info or not user_info["email"]:
+        return jsonify({"message": "Could not retrieve user info"}), 400
 
-    return jsonify({"message": "Registered. Please verify your email."}), 201
+    # --- FIND OR CREATE USER ---
+    user = User.query.filter_by(email=user_info["email"]).first()
 
-# =========================
-# LOGIN
-# =========================
-@auth_bp.route("/login", methods=["POST"])
-def login():
-    data = request.json
-    user = User.query.filter_by(email=data["email"]).first()
+    if not user:
+        user = User(
+            full_name=user_info["full_name"],
+            email=user_info["email"],
+            password=None, # Set to None as discussed for social users
+            role="USER",
+            email_verified=user_info["verified"],
+            google_id=user_info.get("google_id"),
+            facebook_id=user_info.get("facebook_id")
+        )
+        db.session.add(user)
+        db.session.commit()
 
-    if not user or not check_password_hash(user.password, data["password"]):
-        return jsonify({"message": "Invalid credentials"}), 401
-
-    token = create_access_token(
-        identity=user.id,
+    # --- GENERATE JWT ---
+    access_token = create_access_token(
+        identity=str(user.id),
         additional_claims={
             "role": user.role,
             "email_verified": user.email_verified
@@ -74,23 +73,10 @@ def login():
     )
 
     return jsonify({
-        "access_token": token,
+        "access_token": access_token,
         "user": {
             "id": user.id,
             "role": user.role,
             "email_verified": user.email_verified
         }
     }), 200
-
-# =========================
-# CURRENT USER
-# =========================
-@auth_bp.route("/me", methods=["GET"])
-@jwt_required()
-def me():
-    user = User.query.get(get_jwt_identity())
-    return jsonify({
-        "email": user.email,
-        "role": user.role,
-        "email_verified": user.email_verified
-    })

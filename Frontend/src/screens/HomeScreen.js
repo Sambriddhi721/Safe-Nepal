@@ -1,225 +1,193 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useRef } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, Alert, 
-  ScrollView, ActivityIndicator, StatusBar, SafeAreaView
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  ScrollView,
+  Animated,
 } from "react-native";
-import * as Location from "expo-location";
-import { FontAwesome, MaterialIcons, Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 
-import { AuthContext } from "../context/AuthContext";
-import SafeMapView from "../components/SafeMapView"; 
+const { width } = Dimensions.get("window");
 
-const API_BASE = "http://10.23.1.244:5000";
-
-// Theme Palette from your provided image
-const COLORS = {
-  background: "#0F172A", // Darkest Navy
-  card: "#1E293B",       // Slate Navy
-  primary: "#3B82F6",    // Bright Blue
-  danger: "#EF4444",     // SOS Red
-  warning: "#F59E0B",    // Alert Orange
-  success: "#10B981",    // Low Risk Green
-  textMain: "#FFFFFF",
-  textMuted: "#94A3B8",
-};
-
-export default function HomeScreen({ navigation }) {
-  const { user } = useContext(AuthContext);
-  const [coords, setCoords] = useState(null);
-  const [loadingLocation, setLoadingLocation] = useState(true);
-  const [risk, setRisk] = useState("Low");
-
-  useEffect(() => {
-    (async () => {
-      try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          setLoadingLocation(false);
-          return;
-        }
-        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setCoords(loc.coords);
-      } catch (e) {
-        console.log("Location Error:", e);
-      } finally {
-        setLoadingLocation(false);
-      }
-    })();
-    fetchRisk();
-  }, []);
-
-  const fetchRisk = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/predict`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          Damak_rf: 10, Dhangadhi_rf: 220, Bharatpur_rf: 12, Pokhara_rf: 50, Kathmandu_rf: 15 
-        }),
-      });
-      const data = await res.json();
-      setRisk(data?.prediction || "Low");
-    } catch (err) {
-      setRisk("Low");
-    }
-  };
-
-  const riskColor = risk.toLowerCase().includes("high") ? COLORS.danger : 
-                    risk.toLowerCase().includes("medium") ? COLORS.warning : COLORS.success;
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      
-      {/* HEADER: Matching 'Nepal Disaster Watch' */}
-      <View style={styles.header}>
-        <Ionicons name="shield-checkmark-outline" size={24} color={COLORS.textMain} />
-        <Text style={styles.headerTitle}>Nepal Disaster Watch</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Profile")}>
-          <FontAwesome name="user-circle" size={26} color={COLORS.textMain} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
-        {/* NATIONAL RISK CARD: Matching the 2nd screen in your image */}
-        <View style={styles.nationalRiskCard}>
-          <Text style={styles.cardLabel}>Current National Risk</Text>
-          
-          <View style={[styles.riskBadge, { backgroundColor: riskColor + "20" }]}>
-            <Text style={[styles.riskText, { color: riskColor }]}>{risk.toUpperCase()}</Text>
-          </View>
-
-          <Text style={styles.mutedText}>
-            Low landslide risk reported nationwide.
-          </Text>
-
-          <TouchableOpacity 
-            style={styles.viewMapBtn}
-            onPress={() => navigation.navigate("RealTimeMap")}
-          >
-            <Text style={styles.viewMapText}>View Detailed Map</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={() => navigation.navigate("SafetyTips")}>
-            <Text style={styles.safetyLink}>Read Safety Guidelines</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* QUICK ACTIONS: Matches the 4-button icons layout */}
-        <View style={styles.actionRow}>
-           <QuickAction title="SOS" icon="notifications-active" color={COLORS.danger} onPress={() => navigation.navigate("SOS")} />
-           <QuickAction title="Alerts" icon="warning" color={COLORS.warning} onPress={() => navigation.navigate("Alerts")} />
-           <QuickAction title="Map" icon="map" color={COLORS.primary} onPress={() => navigation.navigate("RealTimeMap")} />
-           <QuickAction title="Safety" icon="lightbulb" color={COLORS.success} onPress={() => navigation.navigate("SafetyTips")} />
-        </View>
-
-        {/* LIVE MAP PREVIEW CARD */}
-        <View style={styles.mapCard}>
-          <View style={styles.mapHeader}>
-            <Text style={styles.mapTitle}>Live Emergency Map</Text>
-            <Ionicons name="expand-outline" size={18} color={COLORS.textMuted} />
-          </View>
-          
-          <View style={styles.mapWrapper}>
-            {loadingLocation ? (
-              <ActivityIndicator color={COLORS.primary} />
-            ) : coords ? (
-              <SafeMapView style={styles.map} region={{
-                latitude: coords.latitude,
-                longitude: coords.longitude,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-              }} />
-            ) : (
-              <Text style={styles.mutedText}>Location unavailable</Text>
-            )}
-          </View>
-        </View>
-
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-// Sub-component for icons
-const QuickAction = ({ title, icon, color, onPress }) => (
+const ActionItem = ({ title, icon, color, onPress, isMaterial = true }) => (
   <TouchableOpacity style={styles.actionItem} onPress={onPress}>
-    <View style={[styles.actionIconBox, { backgroundColor: color + "15" }]}>
-      <MaterialIcons name={icon} size={28} color={color} />
+    <View style={[styles.iconCircle, { backgroundColor: color + "15" }]}>
+      {isMaterial ? (
+        <MaterialIcons name={icon} size={24} color={color} />
+      ) : (
+        <FontAwesome5 name={icon} size={20} color={color} />
+      )}
     </View>
-    <Text style={styles.actionLabel}>{title}</Text>
+    <Text style={styles.actionText}>{title}</Text>
   </TouchableOpacity>
 );
 
+export default function HomeScreen({ navigation }) {
+  const blinkAnim = useRef(new Animated.Value(0.4)).current;
+
+  // SAFETY NAVIGATION FUNCTION
+  const safeNavigate = (screenName) => {
+    if (navigation && screenName) {
+      try {
+        navigation.navigate(screenName);
+      } catch (err) {
+        console.warn(`Navigation to ${screenName} failed. Check App.js names.`);
+      }
+    }
+  };
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(blinkAnim, {
+          toValue: 0.4,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [blinkAnim]);
+
+  return (
+    <LinearGradient colors={["#101828", "#111827"]} style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        
+        <View style={styles.header}>
+          <TouchableOpacity>
+            <Ionicons name="shield-checkmark-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.navTitle}>Nepal Disaster Watch</Text>
+          <TouchableOpacity onPress={() => safeNavigate("Profile")}>
+            <Ionicons name="person-circle" size={32} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.mainRiskCard}>
+          <Text style={styles.riskLabel}>Current National Risk</Text>
+          <Animated.View style={[styles.lowBadge, { opacity: blinkAnim }]}>
+            <Text style={styles.lowText}>LOW</Text>
+          </Animated.View>
+          <Text style={styles.riskDescription}>
+            Current weather patterns indicate low risk levels.
+          </Text>
+          <TouchableOpacity 
+            style={styles.mapButton}
+            onPress={() => safeNavigate("RealTimeMapScreen")}
+          >
+            <Text style={styles.mapButtonText}>View Detailed Map</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>Emergency Services</Text>
+        <View style={styles.grid}>
+          <ActionItem title="SOS" icon="notifications-active" color="#F87171" onPress={() => safeNavigate("SOSScreen")} />
+          <ActionItem title="Alerts" icon="warning" color="#FBBF24" onPress={() => safeNavigate("AlertScreen")} />
+          <ActionItem title="Predict" icon="insert-chart-outlined" color="#A78BFA" onPress={() => safeNavigate("PredictionAnalyticsScreen")} />
+          <ActionItem title="Relief" icon="home" color="#60A5FA" onPress={() => safeNavigate("ReliefCenterScreen")} />
+          <ActionItem title="Contacts" icon="contact-phone" color="#94A3B8" onPress={() => safeNavigate("EmergencyContactsScreen")} />
+          <ActionItem title="Safety" icon="lightbulb" color="#34D399" onPress={() => safeNavigate("SafetyTipsScreen")} />
+        </View>
+
+        <View style={styles.mapPreviewSection}>
+            <View style={styles.mapHeader}>
+                <Text style={styles.liveTitle}>Live Emergency</Text>
+                <MaterialIcons name="fullscreen" size={20} color="#94a3b8" />
+            </View>
+            <View style={styles.mapPlaceholder}>
+                <MaterialIcons name="location-on" size={30} color="#ef4444" />
+                <Text style={styles.mapCoords}>Map View</Text>
+                <Text style={styles.mapSubCoords}>27.7009, 85.2556</Text>
+                <Text style={styles.apiKeyText}>Google Maps API key required</Text>
+            </View>
+        </View>
+      </ScrollView>
+    </LinearGradient>
+  );
+}
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1 },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingTop: 50,
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
   },
-  headerTitle: { color: COLORS.textMain, fontSize: 18, fontWeight: "700" },
-  scrollContent: { paddingBottom: 40 },
+  navTitle: { color: "#fff", fontSize: 18, fontWeight: "bold" },
   
-  nationalRiskCard: {
-    backgroundColor: COLORS.card,
-    margin: 16,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
+  mainRiskCard: {
+    backgroundColor: "#1F2937",
+    marginHorizontal: 20,
+    borderRadius: 24,
+    padding: 25,
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#374151",
   },
-  cardLabel: { color: COLORS.textMuted, fontSize: 14, marginBottom: 12 },
-  riskBadge: {
-    paddingHorizontal: 50,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  riskText: { fontSize: 36, fontWeight: "900", letterSpacing: 1 },
-  mutedText: { color: COLORS.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 20 },
-  
-  viewMapBtn: {
-    backgroundColor: COLORS.primary,
-    width: '100%',
-    paddingVertical: 14,
+  riskLabel: { color: "#9CA3AF", fontSize: 14, marginBottom: 15 },
+  lowBadge: {
+    backgroundColor: "#064E3B",
+    paddingHorizontal: 40,
+    paddingVertical: 10,
     borderRadius: 12,
     marginBottom: 15,
   },
-  viewMapText: { color: "#FFF", textAlign: 'center', fontWeight: 'bold', fontSize: 16 },
-  safetyLink: { color: COLORS.primary, fontSize: 13, textDecorationLine: 'underline' },
+  lowText: { color: "#10B981", fontSize: 32, fontWeight: "bold", letterSpacing: 2 },
+  riskDescription: { color: "#9CA3AF", fontSize: 13, textAlign: "center", marginBottom: 20 },
+  mapButton: {
+    backgroundColor: "#FBBF24",
+    width: '100%',
+    paddingVertical: 15,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  mapButtonText: { color: "#000", fontWeight: "bold", fontSize: 16 },
 
-  actionRow: {
+  sectionTitle: { color: "#fff", fontSize: 18, fontWeight: "bold", marginHorizontal: 20, marginTop: 25, marginBottom: 15 },
+  
+  grid: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    paddingHorizontal: 10,
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+  },
+  actionItem: {
+    width: (width - 60) / 3,
+    alignItems: "center",
     marginBottom: 20,
   },
-  actionItem: { alignItems: 'center' },
-  actionIconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+  iconCircle: { 
+    width: 65, 
+    height: 65, 
+    borderRadius: 20, 
+    justifyContent: "center", 
+    alignItems: "center", 
     marginBottom: 8,
+    backgroundColor: '#1f2937' 
   },
-  actionLabel: { color: COLORS.textMuted, fontSize: 12, fontWeight: '600' },
+  actionText: { color: "#94A3B8", fontSize: 13, fontWeight: "500" },
 
-  mapCard: {
-    backgroundColor: COLORS.card,
-    marginHorizontal: 16,
+  mapPreviewSection: { marginHorizontal: 20, marginTop: 10, marginBottom: 30 },
+  mapHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  liveTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  mapPlaceholder: {
+    backgroundColor: "#F9FAFB",
+    height: 180,
     borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: "#334155",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  mapHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 15, alignItems: 'center' },
-  mapTitle: { color: COLORS.textMain, fontWeight: '700' },
-  mapWrapper: { height: 180, width: '100%', backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
-  map: { width: '100%', height: '100%' },
+  mapCoords: { fontSize: 18, fontWeight: "bold", color: "#1F2937", marginTop: 5 },
+  mapSubCoords: { color: "#6B7280", fontSize: 12 },
+  apiKeyText: { color: "#9CA3AF", fontSize: 10, marginTop: 10 }
 });

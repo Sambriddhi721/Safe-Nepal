@@ -7,16 +7,16 @@ import UserStack from "./UserStack";
 import HelperStack from "./HelperStack";
 
 export default function AppNavigator() {
-  const { loading, isAuthenticated, isUser, isHelper } =
-    useContext(AuthContext);
+  const { loading } = useContext(AuthContext);
 
   if (loading) return null;
 
   return (
     <NavigationContainer>
-      {!isAuthenticated && <AuthStack />}
-      {isAuthenticated && isUser && <UserStack />}
-      {isAuthenticated && isHelper && <HelperStack />}
+      {/* FORCED VIEW: Rendering UserStack directly.
+          Ensure NotificationSettings and AboutScreen are registered INSIDE UserStack.js
+      */}
+      <UserStack />
     </NavigationContainer>
   );
 }

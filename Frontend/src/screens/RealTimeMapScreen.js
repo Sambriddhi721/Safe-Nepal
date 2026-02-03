@@ -3,8 +3,7 @@ import { StyleSheet, View, StatusBar, ActivityIndicator } from "react-native";
 import MapView, { Marker, UrlTile } from "react-native-maps";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
-
-const API_BASE = "http://10.23.0.48:5000";
+import { API_BASE } from "../config";
 // YOUR PROVIDED KEY
 const STADIA_API_KEY = "177da6b6-b7e8-47b3-a29d-59af760d6f2b";
 

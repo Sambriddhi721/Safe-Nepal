@@ -1,11 +1,17 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from "react-native";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  Alert, 
+  ScrollView 
+} from "react-native";
 import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
-import { FontAwesome, AntDesign } from "@expo/vector-icons";
-
-// FIXED: Using ngrok HTTPS tunnel for secure connection
-const API_BASE = "https://thunderingly-cuspidate-maud.ngrok-free.dev";
+import { MaterialCommunityIcons, FontAwesome } from "@expo/vector-icons";
+import { API_BASE } from "../config";
 
 export default function SignupScreen({ navigation }) {
   const [fullName, setFullName] = useState("");
@@ -14,107 +20,153 @@ export default function SignupScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSignup = async () => {
-    if (!fullName || !email || !password) {
-      Alert.alert("Error", "Please fill all fields");
-      return;
-    }
-
+    if (!fullName || !email || !password) return Alert.alert("Error", "Please fill all fields");
     try {
       await axios.post(`${API_BASE}/api/auth/register`, {
         full_name: fullName,
         email: email.trim().toLowerCase(),
-        password,
+        password
       });
-
-      Alert.alert("Success", "Account created successfully!", [
-        { text: "Log In Now", onPress: () => navigation.navigate("Login") }
+      Alert.alert("Success", "Account created! You can now log in.", [
+        { text: "OK", onPress: () => navigation.navigate("Login") }
       ]);
     } catch (err) {
-      Alert.alert("Signup Failed", err?.response?.data?.message || "Cannot connect to server.");
+      Alert.alert("Signup Failed", err?.response?.data?.message || "Server error");
     }
   };
 
   return (
     <LinearGradient colors={["#0f2027", "#203a43", "#2c5364"]} style={styles.container}>
-      <View style={styles.card}>
-        <View style={styles.notificationIconContainer}>
-          <Text style={styles.icon}>🔔</Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        
+        {/* Main Card */}
+        <View style={styles.card}>
+          
+          {/* Bell Icon */}
+          <View style={styles.iconContainer}>
+            <View style={styles.iconCircle}>
+              <FontAwesome name="bell" size={30} color="#FFD700" />
+            </View>
+          </View>
 
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join Safe Nepal for real-time disaster updates.</Text>
+          <Text style={styles.headerTitle}>Create Account</Text>
+          <Text style={styles.headerSubtitle}>Join Safe Nepal for real-time disaster updates.</Text>
 
-        <View style={styles.tabContainer}>
-          <View style={styles.tabRow}>
-            <TouchableOpacity style={styles.inactiveTab} onPress={() => navigation.navigate("Login")}>
-              <Text style={styles.inactiveTabText}>Log In</Text>
+          {/* LogIn/SignUp Toggle Tab */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate("Login")}>
+              <Text style={styles.tabText}>Log In</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.activeTab}>
+            <TouchableOpacity style={[styles.tab, styles.activeTab]}>
               <Text style={styles.activeTabText}>Sign Up</Text>
             </TouchableOpacity>
           </View>
-        </View>
 
-        <Text style={styles.label}>Full Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="John Doe"
-          placeholderTextColor="#555"
-          value={fullName}
-          onChangeText={setFullName}
-        />
+          {/* Full Name Input */}
+          <Text style={styles.inputLabel}>Full Name</Text>
+          <View style={styles.inputBox}>
+            <TextInput 
+              style={styles.input} 
+              placeholder="John Doe" 
+              placeholderTextColor="#777" 
+              value={fullName} 
+              onChangeText={setFullName} 
+            />
+          </View>
 
-        <Text style={styles.label}>Email Address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="email@example.com"
-          placeholderTextColor="#555"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
+          {/* Email Address Input */}
+          <Text style={styles.inputLabel}>Email Address</Text>
+          <View style={styles.inputBox}>
+            <TextInput 
+              style={styles.input} 
+              placeholder="email@example.com" 
+              placeholderTextColor="#777" 
+              autoCapitalize="none" 
+              value={email} 
+              onChangeText={setEmail} 
+            />
+          </View>
 
-        <Text style={styles.label}>Password</Text>
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.passwordInput}
-            placeholder="Min 6 characters"
-            placeholderTextColor="#555"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <FontAwesome name={showPassword ? "eye" : "eye-slash"} size={20} color="#666" />
+          {/* Password Input */}
+          <Text style={styles.inputLabel}>Password</Text>
+          <View style={styles.inputBox}>
+            <TextInput 
+              style={styles.input} 
+              placeholder="Min 6 characters" 
+              placeholderTextColor="#777" 
+              secureTextEntry={!showPassword} 
+              value={password} 
+              onChangeText={setPassword} 
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <MaterialCommunityIcons 
+                name={showPassword ? "eye-off" : "eye"} 
+                size={20} 
+                color="#777" 
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Sign Up Button */}
+          <TouchableOpacity style={styles.signUpBtn} onPress={handleSignup}>
+            <Text style={styles.signUpBtnText}>Sign Up</Text>
           </TouchableOpacity>
+
         </View>
 
-        <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
-          <Text style={styles.buttonText}>Sign Up</Text>
+        {/* Footer */}
+        <TouchableOpacity style={styles.footer} onPress={() => navigation.navigate("Login")}>
+          <Text style={styles.footerText}>Already have an account? <Text style={styles.loginLink}>Login</Text></Text>
         </TouchableOpacity>
-      </View>
+
+      </ScrollView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center" },
-  card: { marginHorizontal: 20, padding: 24, borderRadius: 20, backgroundColor: "#111827" },
-  notificationIconContainer: { alignSelf: 'center', backgroundColor: '#1e293b', padding: 15, borderRadius: 50, marginBottom: 15 },
-  icon: { fontSize: 30 },
-  title: { fontSize: 24, fontWeight: "bold", color: "#ffffff", textAlign: "center" },
-  subtitle: { textAlign: "center", color: "#9ca3af", marginTop: 10, marginBottom: 25, fontSize: 13 },
-  tabContainer: { backgroundColor: '#1f2937', borderRadius: 12, padding: 4, marginBottom: 25 },
-  tabRow: { flexDirection: "row" },
-  activeTab: { flex: 1, paddingVertical: 10, backgroundColor: '#111827', borderRadius: 8, alignItems: 'center' },
-  inactiveTab: { flex: 1, paddingVertical: 10, alignItems: 'center' },
-  activeTabText: { color: "#ffffff", fontWeight: "600" },
-  inactiveTabText: { color: "#9ca3af" },
-  label: { color: '#ffffff', marginBottom: 8, fontSize: 14 },
-  input: { height: 50, backgroundColor: "#1f2937", borderRadius: 10, paddingHorizontal: 15, color: "#ffffff", marginBottom: 15 },
-  passwordContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#1f2937", borderRadius: 10, paddingHorizontal: 15, marginBottom: 25 },
-  passwordInput: { flex: 1, height: 50, color: "#ffffff" },
-  signupButton: { backgroundColor: "#1d4ed8", borderRadius: 10, paddingVertical: 15, alignItems: "center" },
-  buttonText: { color: "#ffffff", fontSize: 16, fontWeight: "bold" },
+  container: { flex: 1 },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: 20 },
+  card: {
+    backgroundColor: 'rgba(25, 35, 50, 0.95)',
+    borderRadius: 25,
+    padding: 25,
+    width: '100%',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  iconContainer: { alignItems: 'center', marginBottom: 15 },
+  iconCircle: {
+    width: 70, height: 70, borderRadius: 35,
+    backgroundColor: '#1e2a38', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#334'
+  },
+  headerTitle: { color: "#FFF", fontSize: 24, fontWeight: "bold", textAlign: 'center' },
+  headerSubtitle: { color: "#aaa", fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 20 },
+  tabContainer: {
+    flexDirection: 'row', backgroundColor: '#161d29', 
+    borderRadius: 12, padding: 5, marginBottom: 25 
+  },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+  activeTab: { backgroundColor: '#253347' },
+  activeTabText: { color: '#FFF', fontWeight: 'bold' },
+  tabText: { color: '#777' },
+  inputLabel: { color: '#FFF', fontSize: 14, marginBottom: 8, fontWeight: '600' },
+  inputBox: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e2a38',
+    borderRadius: 10, paddingHorizontal: 15, height: 50, marginBottom: 15,
+    borderWidth: 1, borderColor: '#334'
+  },
+  input: { color: "#FFF", flex: 1, fontSize: 14 },
+  signUpBtn: {
+    backgroundColor: "#2D50E6", height: 55, borderRadius: 12,
+    justifyContent: "center", alignItems: "center", marginTop: 10
+  },
+  signUpBtnText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
+  footer: { marginTop: 25, alignItems: 'center' },
+  footerText: { color: "#aaa", fontSize: 14 },
+  loginLink: { color: '#2D50E6', fontWeight: 'bold' }
 });

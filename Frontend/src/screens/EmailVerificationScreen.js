@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } fr
 import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
+import { API_BASE } from "../config";
 
 // Ensure this matches your backend IP
-const API_BASE = "http://192.168.111.74:5000";
 
 export default function EmailVerificationScreen() {
   const { user, token, signOut, updateUser } = useContext(AuthContext);
