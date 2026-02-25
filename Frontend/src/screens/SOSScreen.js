@@ -1,166 +1,155 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Platform, // Added Platform to handle iOS/Android message formatting
+import { 
+  View, Text, StyleSheet, TouchableOpacity, TextInput, 
+  Alert, ActivityIndicator, Animated, Platform, Vibration 
 } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import * as Linking from "expo-linking"; // Use Linking instead of SMS/Location
-import NetInfo from "@react-native-community/netinfo";
-
-import { AuthContext } from "../context/AuthContext";
-import { ThemeContext } from "../context/ThemeContext";
-import { themes } from "../theme/colors";
-import { API_BASE } from "../config";
+import { Ionicons } from "@expo/vector-icons";
+import * as Linking from "expo-linking";
+import * as Location from "expo-location";
 
 export default function SOSScreen({ navigation }) {
-  const { isVerifiedUser, isUser, token } = useContext(AuthContext);
-  const themeContext = useContext(ThemeContext);
-  const theme = themeContext ? themeContext.theme : 'dark'; 
-  const colors = themes[theme] || themes['dark'];
-
   const [type, setType] = useState("Landslide");
   const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
+  const [locationText, setLocationText] = useState("Fetching location...");
+  const [isHolding, setIsHolding] = useState(false);
 
-  const holdTimer = useRef(null);
+  // Animation Refs
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const blinkAnim = useRef(new Animated.Value(1)).current;
+  const holdTimer = useRef(null);
 
   useEffect(() => {
-    // Pulse Animation for the SOS button
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.15, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+    // Synchronized Pulse and Blink
+    const animation = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(blinkAnim, { toValue: 0.5, duration: 600, useNativeDriver: true }),
+          Animated.timing(blinkAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
       ])
     );
-    pulse.start();
-
-    const unsubscribe = NetInfo.addEventListener((state) => setIsOnline(state.isConnected));
-    return () => { pulse.stop(); unsubscribe(); };
+    animation.start();
+    fetchLocation();
+    return () => animation.stop();
   }, []);
 
-  // NEW: Simplified SOS Action using Linking
-  const sendSOS = async () => {
-    if (!isUser || !isVerifiedUser) {
-      Alert.alert("Access Denied", "Please ensure you are logged in and verified.");
+  const fetchLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      setLocationText("Permission denied");
       return;
     }
-
-    setSending(true);
-    
-    // Fallback message for SMS
-    const sosMessage = `EMERGENCY SOS: ${type}. ${message || "Please send help to my location!"}`;
-    const smsNumber = "100"; // Default Nepal Police
-
-    // Try to open the native SMS app (Cross-platform compatible)
-    const separator = Platform.OS === 'ios' ? '&' : '?';
-    const url = `sms:${smsNumber}${separator}body=${encodeURIComponent(sosMessage)}`;
-
-    try {
-      await Linking.openURL(url);
-      Alert.alert("SOS Triggered", "Your message is ready. Tap send in your messaging app.");
-    } catch (err) {
-      Alert.alert("Error", "Unable to open messages. Please call 100 directly.");
-    } finally {
-      setSending(false);
-    }
+    let loc = await Location.getCurrentPositionAsync({});
+    setLocationText(`${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
   };
 
-  const onPressIn = () => { holdTimer.current = setTimeout(sendSOS, 3000); };
-  const onPressOut = () => { if (holdTimer.current) clearTimeout(holdTimer.current); };
+  const triggerSOS = () => {
+    Vibration.vibrate([0, 500, 200, 500]);
+    Alert.alert("SOS SENT", "Emergency services and your contacts have been notified.");
+    setIsHolding(false);
+  };
+
+  const onPressIn = () => {
+    setIsHolding(true);
+    holdTimer.current = setTimeout(triggerSOS, 3000);
+  };
+
+  const onPressOut = () => {
+    clearTimeout(holdTimer.current);
+    setIsHolding(false);
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>EMERGENCY ALERT</Text>
-        <View style={{ width: 24 }} />
+    <View style={styles.container}>
+      <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
+        <Ionicons name="close" size={30} color="white" />
+      </TouchableOpacity>
+
+      <Text style={styles.headerTitle}>EMERGENCY ALERT</Text>
+      <Text style={styles.subText}>Press and hold the button for 3 seconds to send an emergency alert.</Text>
+
+      {/* SOS Blinking Container */}
+      <View style={styles.sosWrapper}>
+        <View style={styles.outerRing} />
+        <View style={styles.middleRing} />
+        <Animated.View style={{ transform: [{ scale: pulseAnim }], opacity: blinkAnim }}>
+          <TouchableOpacity 
+            style={[styles.sosButton, isHolding && styles.sosActive]} 
+            onPressIn={onPressIn} 
+            onPressOut={onPressOut}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.sosText}>SOS</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
 
-      <Text style={[styles.subText, { color: colors.subText }]}>
-        Hold the button for 3 seconds to trigger an emergency alert.
-      </Text>
-
-      <View style={styles.circleOuter}>
-        <View style={styles.circleMiddle}>
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <TouchableOpacity
-              style={styles.sosButton}
-              onPressIn={onPressIn}
-              onPressOut={onPressOut}
-              disabled={sending}
-            >
-              {sending ? <ActivityIndicator color="#fff" size="large" /> : <Text style={styles.sosText}>SOS</Text>}
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </View>
-
-      <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.quickBtn} onPress={() => Linking.openURL("tel:100")}>
-          <Text style={styles.quickText}>📞 Call Police</Text>
+      {/* Quick Action Buttons */}
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.blueBtn} onPress={() => Linking.openURL("tel:100")}>
+          <Ionicons name="call" size={20} color="white" />
+          <Text style={styles.btnText}> Call Emergency</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.quickBtn} onPress={() => Linking.openURL("tel:102")}>
-          <Text style={styles.quickText}>🚑 Ambulance</Text>
+        <TouchableOpacity style={styles.blueBtn} onPress={() => Linking.openURL("sms:100")}>
+          <Ionicons name="mail" size={20} color="white" />
+          <Text style={styles.btnText}> Send SMS</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={[styles.sectionTitle, { color: colors.primary }]}>Type of Emergency</Text>
+      <Text style={styles.sectionLabel}>Emergency Type</Text>
       <View style={styles.typeRow}>
-        <TouchableOpacity 
-            style={[styles.typeBtn, type === "Landslide" && styles.activeType]} 
-            onPress={() => setType("Landslide")}
-        >
-          <Ionicons name="warning" size={16} color="#fff" />
+        <TouchableOpacity style={[styles.typeBtn, type === "Landslide" && styles.activeType]} onPress={() => setType("Landslide")}>
+          <Ionicons name="warning" size={18} color="white" />
           <Text style={styles.typeText}> Landslide</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-            style={[styles.typeBtn, type === "Flood" && styles.activeType]} 
-            onPress={() => setType("Flood")}
-        >
-          <MaterialIcons name="flood" size={16} color="#fff" />
+        <TouchableOpacity style={[styles.typeBtn, type === "Flood" && styles.activeType]} onPress={() => setType("Flood")}>
+          <Ionicons name="water" size={18} color="white" />
           <Text style={styles.typeText}> Flood</Text>
         </TouchableOpacity>
       </View>
 
-      <TextInput
-        style={[styles.input, { color: colors.text, marginTop: 20 }]}
-        placeholder="Add details (e.g., 'House flooded')"
-        placeholderTextColor={colors.subText}
-        value={message}
-        onChangeText={setMessage}
+      <Text style={styles.sectionLabel}>Your Location</Text>
+      <View style={styles.inputBox}>
+        <Ionicons name="location" size={20} color="#F1C40F" />
+        <Text style={styles.locValue}>{locationText}</Text>
+        <TouchableOpacity onPress={fetchLocation}><Ionicons name="refresh" size={18} color="white" /></TouchableOpacity>
+      </View>
+
+      <TextInput 
+        style={styles.messageInput} 
+        placeholder="Add short message" 
+        placeholderTextColor="#5F6E78" 
+        value={message} 
+        onChangeText={setMessage} 
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 50 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  headerTitle: { fontSize: 16, fontWeight: "700" },
-  subText: { textAlign: "center", fontSize: 13, marginBottom: 20 },
-  circleOuter: { alignSelf: "center", width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(255,0,0,0.1)", justifyContent: "center", alignItems: "center" },
-  circleMiddle: { width: 170, height: 170, borderRadius: 85, backgroundColor: "rgba(255,0,0,0.2)", justifyContent: "center", alignItems: "center" },
-  sosButton: { width: 120, height: 120, borderRadius: 60, backgroundColor: "#ff1e1e", justifyContent: "center", alignItems: "center", elevation: 10 },
-  sosText: { color: "#fff", fontSize: 32, fontWeight: "800" },
-  quickActions: { flexDirection: "row", justifyContent: "space-between", marginVertical: 16 },
-  quickBtn: { backgroundColor: "#1e90ff", paddingVertical: 12, borderRadius: 10, width: "48%", alignItems: "center" },
-  quickText: { color: "#fff", fontWeight: "700" },
-  sectionTitle: { marginTop: 20, marginBottom: 8, fontWeight: "600" },
-  typeRow: { flexDirection: "row", justifyContent: "space-between" },
-  typeBtn: { flexDirection: "row", alignItems: "center", width: "48%", paddingVertical: 12, justifyContent: "center", borderRadius: 12, backgroundColor: "#1b263b" },
-  activeType: { backgroundColor: "#ff1e1e", borderWidth: 1, borderColor: "#fff" },
-  typeText: { color: "#fff", fontWeight: "600" },
-  input: { backgroundColor: "#1b263b", borderRadius: 12, padding: 14, color: "#fff" },
+  container: { flex: 1, backgroundColor: "#121C22", padding: 25 },
+  closeBtn: { marginTop: 20 },
+  headerTitle: { color: "white", fontSize: 20, fontWeight: "bold", textAlign: "center", marginTop: -30 },
+  subText: { color: "#8A9AA4", textAlign: "center", marginTop: 25, fontSize: 13, lineHeight: 20 },
+  sosWrapper: { height: 300, justifyContent: 'center', alignItems: 'center' },
+  outerRing: { position: 'absolute', width: 250, height: 250, borderRadius: 125, backgroundColor: 'rgba(255,0,0,0.05)' },
+  middleRing: { position: 'absolute', width: 190, height: 190, borderRadius: 95, backgroundColor: 'rgba(255,0,0,0.1)' },
+  sosButton: { width: 130, height: 130, borderRadius: 65, backgroundColor: '#FF1E1E', justifyContent: 'center', alignItems: 'center', elevation: 15 },
+  sosActive: { backgroundColor: '#B31212' },
+  sosText: { color: 'white', fontSize: 36, fontWeight: '900' },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 },
+  blueBtn: { backgroundColor: '#2196F3', flexDirection: 'row', padding: 16, borderRadius: 12, width: '48%', justifyContent: 'center', alignItems: 'center' },
+  btnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
+  sectionLabel: { color: '#F1C40F', fontWeight: 'bold', marginBottom: 12, fontSize: 14 },
+  typeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  typeBtn: { flexDirection: 'row', backgroundColor: '#1C2931', padding: 15, borderRadius: 12, width: '48%', justifyContent: 'center', alignItems: 'center' },
+  activeType: { borderWidth: 1, borderColor: 'white' },
+  typeText: { color: 'white', fontWeight: 'bold' },
+  inputBox: { backgroundColor: '#1C2931', padding: 16, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  locValue: { color: 'white', flex: 1, marginLeft: 10 },
+  messageInput: { backgroundColor: '#1C2931', padding: 16, borderRadius: 12, color: 'white' }
 });

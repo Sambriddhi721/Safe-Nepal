@@ -1,168 +1,166 @@
-import React, { useContext, useState } from "react";
-import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, Switch, StatusBar, Image
+import React, { useContext } from "react";
+import { 
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
+  Alert, Switch, Image, StatusBar 
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "../context/AuthContext"; 
+import { ThemeContext } from "../context/ThemeContext"; // Import Global Theme
 
 export default function ProfileScreen({ navigation }) {
-  const { signOut } = useContext(AuthContext);
-  
-  // FUNCTIONAL STATES
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [isNepali, setIsNepali] = useState(false);
+  // 1. Get Auth Context (with crash protection)
+  const auth = useContext(AuthContext) || {};
+  const { signOut } = auth;
 
-  // THEME CONFIG (Matches Rain Nepal & Nepal Disaster Watch)
-  const theme = {
-    bg: isDarkMode ? "#0f172a" : "#F1F5F9",
-    card: isDarkMode ? "#1e293b" : "#FFFFFF",
-    text: isDarkMode ? "#FFFFFF" : "#0F172A",
-    subText: isDarkMode ? "#94A3B8" : "#64748B",
-    border: isDarkMode ? "#334155" : "#E2E8F0",
-    accent: "#3b82f6"
+  // 2. Get Global Theme Context
+  const { isDarkMode, toggleTheme, colors } = useContext(ThemeContext);
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      { 
+        text: "Log Out", 
+        style: "destructive", 
+        onPress: () => signOut ? signOut() : Alert.alert("Note", "Auth system not connected yet.") 
+      }
+    ]);
   };
 
-  const toggleLanguage = () => setIsNepali(!isNepali);
-
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Dynamic StatusBar based on theme */}
+      <StatusBar 
+        barStyle={isDarkMode ? "light-content" : "dark-content"} 
+        backgroundColor={colors.background}
+      />
       
-      {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>
-          {isNepali ? "सेटिङहरू" : "Settings"}
-        </Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* 1. USER PROFILE (Your Info Integrated) */}
-        <TouchableOpacity style={[styles.profileRow, { borderBottomColor: theme.border }]}>
-          <View style={styles.avatarContainer}>
-             <Image 
-                source={{ uri: 'https://ui-avatars.com/api/?name=Esprihya&background=random' }} 
-                style={styles.profileImage} 
-             />
+        {/* PROFILE HEADER - Featuring Esprihya Dawadi */}
+        <View style={styles.profileHeader}>
+          <Image 
+            source={{ uri: 'https://ui-avatars.com/api/?name=Esprihya+Dawadi&background=3b82f6&color=fff' }} 
+            style={styles.avatar} 
+          />
+          <View style={styles.profileInfo}>
+            <Text style={[styles.userName, { color: colors.text }]}>Esprihya Dawadi</Text>
+            <Text style={[styles.userEmail, { color: colors.subText }]}>Personal Info, Password</Text>
           </View>
-          <View style={styles.profileTextContainer}>
-            <Text style={[styles.userName, { color: theme.text }]}>esprihya</Text>
-            <Text style={[styles.editLabel, { color: theme.subText }]}>esprihyadawadi18@gmail.com</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.subText} />
-        </TouchableOpacity>
-
-        {/* 2. PRO BANNER */}
-        <View style={[styles.upgradeCard, { backgroundColor: isDarkMode ? "#1e293b" : "#DBEAFE" }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.upgradeTitle, { color: isDarkMode ? "#fff" : "#1e40af" }]}>Upgrade Now - Go Pro</Text>
-            <Text style={[styles.upgradeDesc, { color: isDarkMode ? "#94a3b8" : "#1e40af" }]}>Advanced alerts and detailed mapping.</Text>
-          </View>
-          <TouchableOpacity style={styles.upgradeBtn}>
-            <Text style={styles.upgradeBtnText}>Upgrade</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("AccountSettings")}>
+            <Ionicons name="chevron-forward" size={24} color={colors.subText} />
           </TouchableOpacity>
         </View>
 
-        {/* 3. GENERAL SETTINGS */}
-        <Text style={styles.sectionTitle}>{isNepali ? "सामान्य" : "General"}</Text>
-        <View style={[styles.settingsCard, { backgroundColor: theme.card }]}>
-          <View style={styles.settingRow}>
+        {/* GENERAL SECTION */}
+        <Text style={[styles.sectionLabel, { color: colors.subText }]}>General</Text>
+        <View style={[styles.cardGroup, { backgroundColor: colors.card }]}>
+          <View style={styles.row}>
             <View style={styles.rowLeft}>
-              <View style={styles.iconBox}><Ionicons name="moon-outline" size={20} color={theme.text} /></View>
-              <Text style={[styles.rowLabel, { color: theme.text }]}>{isNepali ? "डार्क मोड" : "Dark Mode"}</Text>
+              <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9' }]}>
+                <Ionicons name={isDarkMode ? "moon" : "sunny"} size={20} color={colors.accent} />
+              </View>
+              <Text style={[styles.rowText, { color: colors.text }]}>Dark Mode</Text>
             </View>
-            <Switch
-              value={isDarkMode}
-              onValueChange={setIsDarkMode}
-              trackColor={{ false: "#94a3b8", true: theme.accent }}
+            <Switch 
+              value={isDarkMode} 
+              onValueChange={toggleTheme} // Calls the global toggle
+              trackColor={{ false: "#cbd5e1", true: colors.success }}
+              thumbColor="#fff"
             />
           </View>
-          
-          <TouchableOpacity onPress={toggleLanguage} style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: theme.border }]}>
-            <View style={styles.rowLeft}>
-              <View style={styles.iconBox}><Ionicons name="language-outline" size={20} color={theme.text} /></View>
-              <Text style={[styles.rowLabel, { color: theme.text }]}>{isNepali ? "भाषा" : "Language"}</Text>
-            </View>
-            <Text style={styles.statusText}>{isNepali ? "नेपाली" : "English"}</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* 4. NOTIFICATION & ABOUT (Navigation Enabled) */}
-        <Text style={styles.sectionTitle}>{isNepali ? "सेटिङहरू" : "Settings"}</Text>
-        <View style={[styles.settingsCard, { backgroundColor: theme.card }]}>
-          <OptionRow 
-            theme={theme} icon="notifications-outline" 
-            label={isNepali ? "सूचनाहरू" : "Notification"} 
+        {/* PREFERENCES & SECURITY */}
+        <Text style={[styles.sectionLabel, { color: colors.subText }]}>Preferences & Security</Text>
+        <View style={[styles.cardGroup, { backgroundColor: colors.card }]}>
+          <SettingItem 
+            colors={colors} icon="notifications" label="Notification" sub="Alerts, Sounds"
             onPress={() => navigation.navigate("NotificationSettings")} 
           />
-          <OptionRow theme={theme} icon="shield-outline" label="Privacy" />
-          <OptionRow 
-            theme={theme} icon="information-circle-outline" 
-            label={isNepali ? "हाम्रो बारेमा" : "About"} 
-            onPress={() => navigation.navigate("AboutScreen")}
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <SettingItem 
+            colors={colors} icon="shield-checkmark" label="Privacy" sub="Location, Data Sharing"
+            onPress={() => navigation.navigate("PrivacySettings")} 
+          />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          
+          {/* SECURITY - Linked to your SecuritySettings.js */}
+          <SettingItem 
+            colors={colors} icon="lock-closed" label="Security" sub="Two-Factor, Login Activity"
+            onPress={() => navigation.navigate("SecuritySettings")} 
+          />
+          
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <SettingItem 
+            colors={colors} icon="person" label="Account" sub="Linked Accounts, Export"
+            onPress={() => navigation.navigate("AccountSettings")} 
+          />
+        </View>
+
+        {/* SUPPORT */}
+        <Text style={[styles.sectionLabel, { color: colors.subText }]}>Support</Text>
+        <View style={[styles.cardGroup, { backgroundColor: colors.card }]}>
+          <SettingItem 
+            colors={colors} icon="help-circle" label="Help & FAQ" sub="Support Center"
+            onPress={() => Alert.alert("Support", "Contact: support@safenepal.com")} 
+          />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <SettingItem 
+            colors={colors} icon="information-circle" label="About" sub="App Version 1.3.6"
+            onPress={() => navigation.navigate("About")} 
           />
         </View>
 
         {/* LOGOUT */}
         <TouchableOpacity 
-          style={styles.logoutBtn} 
-          onPress={() => Alert.alert("Log Out", "Are you sure?", [{text: "No"}, {text: "Yes", onPress: signOut}])}
+          style={[styles.logoutBtn, { backgroundColor: colors.card }]} 
+          onPress={handleLogout}
         >
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Ionicons name="log-out-outline" size={22} color={colors.danger} />
+          <Text style={[styles.logoutText, { color: colors.danger }]}>Log Out</Text>
         </TouchableOpacity>
 
-        <View style={styles.footerContainer}>
-           <Text style={[styles.versionText, { color: theme.subText }]}>Safe Nepal v1.3.6</Text>
-           <Text style={[styles.madeByText, { color: theme.subText }]}>Made with ❤️ for Nepal</Text>
-        </View>
+        <Text style={[styles.footerVersion, { color: colors.subText }]}>v1.3.6 • Safe Nepal</Text>
       </ScrollView>
     </View>
   );
 }
 
-// Sub-Component for Rows
-function OptionRow({ theme, icon, label, onPress }) {
+// Sub-component for individual rows
+function SettingItem({ colors, icon, label, sub, onPress }) {
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.settingRow, { borderBottomWidth: 0.5, borderBottomColor: theme.border }]}>
+    <TouchableOpacity style={styles.row} onPress={onPress}>
       <View style={styles.rowLeft}>
-        <View style={styles.iconBox}><Ionicons name={icon} size={20} color={theme.text} /></View>
-        <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
+        <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+          <Ionicons name={icon} size={20} color={colors.accent} />
+        </View>
+        <View>
+          <Text style={[styles.rowText, { color: colors.text }]}>{label}</Text>
+          <Text style={[styles.rowSubText, { color: colors.subText }]}>{sub}</Text>
+        </View>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.subText} />
+      <Ionicons name="chevron-forward" size={18} color={colors.subText} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 50, paddingBottom: 20, paddingHorizontal: 16 },
-  headerTitle: { fontSize: 20, fontWeight: '700' },
-  profileRow: { flexDirection: 'row', alignItems: 'center', padding: 20, marginHorizontal: 16, marginBottom: 20, borderBottomWidth: 1 },
-  avatarContainer: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFE5D9', overflow: 'hidden' },
-  profileImage: { width: '100%', height: '100%' },
-  profileTextContainer: { flex: 1, marginLeft: 15 },
-  userName: { fontSize: 18, fontWeight: '800' },
-  editLabel: { fontSize: 13, marginTop: 2 },
-  upgradeCard: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 16, marginHorizontal: 16, marginBottom: 25, borderWidth: 1, borderColor: '#334155' },
-  upgradeTitle: { fontSize: 16, fontWeight: '800' },
-  upgradeDesc: { fontSize: 12, marginTop: 4, width: '85%' },
-  upgradeBtn: { backgroundColor: '#3b82f6', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 10 },
-  upgradeBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', marginLeft: 20, marginBottom: 10, color: '#64748b', textTransform: 'uppercase' },
-  settingsCard: { marginHorizontal: 16, borderRadius: 16, overflow: 'hidden' },
-  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  scrollContent: { padding: 16, paddingTop: 60, paddingBottom: 40 },
+  profileHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 30, paddingHorizontal: 4 },
+  avatar: { width: 60, height: 60, borderRadius: 30, marginRight: 15 },
+  profileInfo: { flex: 1 },
+  userName: { fontSize: 22, fontWeight: 'bold' },
+  userEmail: { fontSize: 14, marginTop: 2 },
+  sectionLabel: { fontSize: 12, fontWeight: '800', marginBottom: 10, marginTop: 22, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1 },
+  cardGroup: { borderRadius: 20, overflow: 'hidden', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
   rowLeft: { flexDirection: 'row', alignItems: 'center' },
-  iconBox: { width: 35, alignItems: 'center' },
-  rowLabel: { fontSize: 15, fontWeight: '500', marginLeft: 5 },
-  statusText: { color: '#3b82f6', fontWeight: '600' },
-  logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', marginHorizontal: 16, marginTop: 30, padding: 18, borderRadius: 12, alignItems: 'center' },
-  logoutText: { color: '#ef4444', fontWeight: '800', fontSize: 16 },
-  footerContainer: { marginTop: 30, alignItems: 'center' },
-  versionText: { fontSize: 12, fontWeight: '600' },
-  madeByText: { fontSize: 11, marginTop: 4 }
+  iconContainer: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
+  rowText: { fontSize: 16, fontWeight: '600' },
+  rowSubText: { fontSize: 12, marginTop: 2 },
+  divider: { height: 1, marginLeft: 70 },
+  logoutBtn: { marginTop: 30, padding: 16, borderRadius: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  logoutText: { fontWeight: "bold", fontSize: 16, marginLeft: 10 },
+  footerVersion: { textAlign: 'center', marginTop: 20, fontSize: 12, opacity: 0.6 }
 });
