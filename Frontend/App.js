@@ -1,12 +1,12 @@
 import React, { useContext } from 'react';
-import { StatusBar } from 'react-native'; // Added StatusBar
+import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// Context
+// --- Context & Theming ---
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext'; 
 
-// Screens
+// --- Screens ---
 import HomeScreen from './src/screens/HomeScreen';
 import ReportDisasterScreen from './src/screens/ReportDisasterScreen';
 import PastReportsScreen from './src/screens/PastReportsScreen';
@@ -20,8 +20,10 @@ import SafetyTipsScreen from './src/screens/SafetyTipsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import SettingsScreen from './src/screens/SettingsScreen'; 
+// --- NEW IMPORT ---
+import AddContactScreen from './src/screens/AddContactScreen'; 
 
-// Settings Sub-Screens
+// --- Settings Sub-Screens ---
 import AccountSettings from './src/screens/AccountSettings';
 import NotificationSettings from './src/screens/NotificationSettings';
 import PrivacySettings from './src/screens/PrivacySettings';
@@ -34,7 +36,6 @@ function AppNavigator() {
 
   return (
     <NavigationContainer>
-      {/* This ensures the system status bar matches your theme globally */}
       <StatusBar 
         barStyle={isDarkMode ? "light-content" : "dark-content"} 
         backgroundColor={colors?.background || '#020617'} 
@@ -45,8 +46,8 @@ function AppNavigator() {
         screenOptions={{ 
           headerStyle: { 
             backgroundColor: colors?.card || '#0f172a',
-            elevation: 0, // Removes shadow on Android
-            shadowOpacity: 0, // Removes shadow on iOS
+            elevation: 0,
+            shadowOpacity: 0,
           }, 
           headerTintColor: colors?.text || '#FFFFFF', 
           headerTitleStyle: { fontWeight: 'bold' },
@@ -54,6 +55,7 @@ function AppNavigator() {
           contentStyle: { backgroundColor: colors?.background || '#020617' } 
         }}
       >
+        {/* --- Primary Screens --- */}
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="NewReport" component={ReportDisasterScreen} options={{ title: 'Submit Report' }} />
         <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My Reports' }} />
@@ -65,12 +67,15 @@ function AppNavigator() {
         <Stack.Screen name="EmergencyContactsScreen" component={EmergencyContactsScreen} options={{ title: 'Emergency Helplines' }} />
         <Stack.Screen name="SafetyTipsScreen" component={SafetyTipsScreen} options={{ title: 'Safety Manual' }} />
         
-        {/* Profile & Main Settings */}
+        {/* --- NEW SCREEN --- */}
+        <Stack.Screen name="AddContact" component={AddContactScreen} options={{ title: 'Add Personal Contact' }} />
+        
+        {/* --- Profile & Main Settings --- */}
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} /> 
         <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Safe Nepal' }} />
 
-        {/* Setting Details - These are the targets for navigation.navigate() */}
+        {/* --- Setting Details --- */}
         <Stack.Screen name="AccountSettings" component={AccountSettings} options={{ title: 'Account Settings' }} />
         <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: 'Notifications' }} />
         <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={{ title: 'Privacy Policy' }} />

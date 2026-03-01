@@ -6,12 +6,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Platform, // FIXED: Added missing Platform import
+  Platform,
   Linking
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
+// Updated import path based on typical structure
 export default function EmergencyContactsScreen({ navigation }) {
 
   const handleAction = (type, number) => {
@@ -20,7 +21,6 @@ export default function EmergencyContactsScreen({ navigation }) {
       url = `tel:${number}`;
     } else if (type === 'sms') {
       const message = "EMERGENCY! I need immediate help. Please track my phone.";
-      // FIXED: Platform.OS now works because it is imported
       url = `sms:${number}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
     }
 
@@ -76,9 +76,10 @@ export default function EmergencyContactsScreen({ navigation }) {
         </View>
       </ScrollView>
 
+      {/* --- UPDATED FAB BUTTON --- */}
       <TouchableOpacity 
         style={styles.fab} 
-        onPress={() => Alert.alert("Feature Coming Soon", "The ability to add custom personal contacts is currently in development.")}
+        onPress={() => navigation.navigate('AddContact')} // Navigates to AddContactScreen
       >
         <Ionicons name="person-add" size={26} color="#fff" />
       </TouchableOpacity>
