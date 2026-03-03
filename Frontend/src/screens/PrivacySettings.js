@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Switch, StatusBar, Alert
+  Switch, StatusBar, Alert, ActivityIndicator
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+// We use the unified storage service to persist these settings
+import { saveSetting, getSetting } from "../services/storage";
 
 export default function PrivacySettings({ navigation }) {
-  // Theme matches your Deep Blue and Black original theme
   const theme = {
     bg: "#020617",
     card: "#0f172a",
@@ -17,16 +18,53 @@ export default function PrivacySettings({ navigation }) {
     success: "#22c55e"
   };
 
+  const [isLoading, setIsLoading] = useState(true);
   const [privacy, setPrivacy] = useState({
     location: true,
     analytics: false,
     publicProfile: true,
-    personalizedAds: false
   });
 
-  const toggleSwitch = (key) => {
-    setPrivacy(prev => ({ ...prev, [key]: !prev[key] }));
+  // 1. Load persisted data when the screen opens
+  useEffect(() => {
+    const loadPrivacyData = async () => {
+      try {
+        const location = await getSetting('privacy_location', true);
+        const analytics = await getSetting('privacy_analytics', false);
+        const publicProfile = await getSetting('privacy_public', true);
+        
+        setPrivacy({
+          location,
+          analytics,
+          publicProfile
+        });
+      } catch (err) {
+        console.error("Failed to load privacy settings", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadPrivacyData();
+  }, []);
+
+  // 2. Save choice to AsyncStorage whenever a switch is toggled
+  const toggleSwitch = async (key, storageKey) => {
+    const newValue = !privacy[key];
+    
+    // Update local state for immediate UI feedback
+    setPrivacy(prev => ({ ...prev, [key]: newValue }));
+    
+    // Persist to storage
+    await saveSetting(storageKey, newValue);
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.bg, justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -52,7 +90,7 @@ export default function PrivacySettings({ navigation }) {
             label="Location Services" 
             detail="Used for precise weather and disaster alerts"
             value={privacy.location}
-            onToggle={() => toggleSwitch('location')}
+            onToggle={() => toggleSwitch('location', 'privacy_location')}
           />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <PrivacyRow 
@@ -61,7 +99,7 @@ export default function PrivacySettings({ navigation }) {
             label="Usage Analytics" 
             detail="Help us improve by sharing anonymous data"
             value={privacy.analytics}
-            onToggle={() => toggleSwitch('analytics')}
+            onToggle={() => toggleSwitch('analytics', 'privacy_analytics')}
           />
         </View>
 
@@ -74,7 +112,7 @@ export default function PrivacySettings({ navigation }) {
             label="Public Profile" 
             detail="Allow others to see your contributions"
             value={privacy.publicProfile}
-            onToggle={() => toggleSwitch('publicProfile')}
+            onToggle={() => toggleSwitch('publicProfile', 'privacy_public')}
           />
         </View>
 
@@ -103,7 +141,6 @@ export default function PrivacySettings({ navigation }) {
   );
 }
 
-// Sub-component for Privacy Rows
 function PrivacyRow({ theme, icon, label, detail, value, onToggle }) {
   return (
     <View style={styles.row}>
@@ -119,6 +156,7 @@ function PrivacyRow({ theme, icon, label, detail, value, onToggle }) {
       <Switch 
         value={value} 
         onValueChange={onToggle}
+        thumbColor={value ? "#FFFFFF" : "#94A3B8"}
         trackColor={{ false: "#334155", true: theme.success }}
       />
     </View>

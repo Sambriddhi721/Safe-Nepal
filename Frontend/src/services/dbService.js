@@ -1,54 +1,68 @@
-import * as SQLite from 'expo-sqlite';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const database_name = 'CRM.db';
+// Prefixes to keep your storage organized
+const NOTE_PREFIX = '@customer_note_';
+const SETTING_PREFIX = '@app_setting_';
 
-// Expo handles opening differently
-const db = SQLite.openDatabase(database_name);
-
-export const getDBConnection = () => {
-    return db;
+/**
+ * =========================
+ * CORE SETTINGS LOGIC
+ * =========================
+ * Handles complex data like Booleans (Toggles) and Objects
+ */
+export const saveSetting = async (key, value) => {
+    try {
+        const storageKey = `${SETTING_PREFIX}${key}`;
+        await AsyncStorage.setItem(storageKey, JSON.stringify(value));
+        console.log(`Setting [${key}] saved.`);
+    } catch (e) {
+        console.error("Error saving setting:", e);
+    }
 };
 
-export const createTable = () => {
-    db.transaction((tx) => {
-        tx.executeSql(
-            `CREATE TABLE IF NOT EXISTS CustomerNotes(
-                contactId TEXT PRIMARY KEY NOT NULL,
-                note TEXT
-            );`,
-            [],
-            () => { console.log('Table created successfully'); },
-            (_, error) => { console.error('Error creating table:', error); return false; }
-        );
-    });
+export const getSetting = async (key, defaultValue) => {
+    try {
+        const storageKey = `${SETTING_PREFIX}${key}`;
+        const value = await AsyncStorage.getItem(storageKey);
+        return value !== null ? JSON.parse(value) : defaultValue;
+    } catch (e) {
+        console.error("Error getting setting:", e);
+        return defaultValue;
+    }
 };
 
-export const saveNote = (contactId, note) => {
-    db.transaction((tx) => {
-        tx.executeSql(
-            `INSERT OR REPLACE INTO CustomerNotes (contactId, note) VALUES (?, ?)`,
-            [contactId, note],
-            () => { console.log('Note saved successfully'); },
-            (_, error) => { console.error('Error saving note:', error); return false; }
-        );
-    });
+/**
+ * =========================
+ * NOTE/CRM LOGIC
+ * =========================
+ * Maintains compatibility with your previous SQLite function names
+ */
+export const saveNote = async (contactId, note) => {
+    try {
+        const key = `${NOTE_PREFIX}${contactId}`;
+        await AsyncStorage.setItem(key, note);
+        console.log('Note saved to local storage');
+    } catch (error) {
+        console.error('Error saving note:', error);
+    }
 };
 
-export const getNote = (contactId) => {
-    return new Promise((resolve, reject) => {
-        db.transaction((tx) => {
-            tx.executeSql(
-                `SELECT note FROM CustomerNotes WHERE contactId = ?`,
-                [contactId],
-                (_, { rows }) => {
-                    if (rows.length > 0) {
-                        resolve(rows.item(0).note);
-                    } else {
-                        resolve('');
-                    }
-                },
-                (_, error) => { reject(error); return false; }
-            );
-        });
-    });
+export const getNote = async (contactId) => {
+    try {
+        const key = `${NOTE_PREFIX}${contactId}`;
+        const note = await AsyncStorage.getItem(key);
+        return note != null ? note : '';
+    } catch (error) {
+        console.error('Error getting note:', error);
+        return '';
+    }
 };
+
+/**
+ * =========================
+ * COMPATIBILITY LAYER
+ * =========================
+ * Keeps the app from crashing if old SQLite init code is called
+ */
+export const getDBConnection = () => null;
+export const createTable = () => console.log('Storage engine: AsyncStorage active.');

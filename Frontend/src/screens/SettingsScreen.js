@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,13 +10,31 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
-// Import only the Context
+// Import Context and Storage Service
 import { ThemeContext } from "../context/ThemeContext";
+import { saveSetting, getSetting } from "../services/storage";
 
 export default function SettingsScreen({ navigation }) {
-  // Grab everything from Context
   const { theme, toggleTheme, colors } = useContext(ThemeContext);
   const isDark = theme === "dark";
+
+  // State for other interactive toggles
+  const [alertsEnabled, setAlertsEnabled] = useState(false);
+
+  // 1. Load persisted settings when the screen mounts
+  useEffect(() => {
+    const loadSettings = async () => {
+      const savedAlerts = await getSetting('emergency_alerts', false);
+      setAlertsEnabled(savedAlerts);
+    };
+    loadSettings();
+  }, []);
+
+  // 2. Functional Handlers
+  const handleToggleAlerts = async (value) => {
+    setAlertsEnabled(value);
+    await saveSetting('emergency_alerts', value);
+  };
 
   return (
     <LinearGradient
@@ -49,17 +67,43 @@ export default function SettingsScreen({ navigation }) {
           </View>
         </View>
 
-        {/* SETTINGS OPTIONS */}
+        {/* ACCOUNT SETTINGS SECTION */}
         <Text style={styles.sectionLabel}>Account Settings</Text>
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <SettingItem icon="notifications-outline" label="Notifications" colors={colors} />
-          <SettingItem icon="lock-closed-outline" label="Privacy" colors={colors} />
-          <SettingItem icon="shield-checkmark-outline" label="Security" colors={colors} borderNone />
+          {/* Functional Toggle for Emergency Alerts */}
+          <View style={[styles.row, styles.border, { borderColor: 'rgba(255,255,255,0.1)' }]}>
+            <View style={styles.leftSide}>
+              <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+              <Text style={[styles.label, { color: colors.text }]}> Emergency Alerts</Text>
+            </View>
+            <Switch
+              value={alertsEnabled}
+              onValueChange={handleToggleAlerts}
+              thumbColor={alertsEnabled ? colors.primary : "#f4f3f4"}
+              trackColor={{ false: "#767577", true: "#4cd137" }}
+            />
+          </View>
+
+          {/* Navigable Items */}
+          <SettingItem 
+            icon="lock-closed-outline" 
+            label="Privacy" 
+            colors={colors} 
+            onPress={() => navigation.navigate('Privacy')} 
+          />
+          <SettingItem 
+            icon="shield-checkmark-outline" 
+            label="Security" 
+            colors={colors} 
+            borderNone 
+            onPress={() => navigation.navigate('Security')} 
+          />
         </View>
 
+        {/* LOGOUT BUTTON */}
         <TouchableOpacity 
-           style={styles.logoutBtn}
-           onPress={() => alert("Logged out!")} // Temporary fix for the 'signOut' error
+            style={styles.logoutBtn}
+            onPress={() => alert("Logged out!")} 
         >
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
@@ -68,10 +112,13 @@ export default function SettingsScreen({ navigation }) {
   );
 }
 
-// Reusable Row Component
-function SettingItem({ icon, label, colors, borderNone }) {
+// Reusable Row Component with Navigation capability
+function SettingItem({ icon, label, colors, borderNone, onPress }) {
   return (
-    <TouchableOpacity style={[styles.row, !borderNone && styles.border, { borderColor: 'rgba(255,255,255,0.1)' }]}>
+    <TouchableOpacity 
+      onPress={onPress}
+      style={[styles.row, !borderNone && styles.border, { borderColor: 'rgba(255,255,255,0.1)' }]}
+    >
       <View style={styles.leftSide}>
         <Ionicons name={icon} size={20} color={colors.primary} />
         <Text style={[styles.label, { color: colors.text }]}> {label}</Text>
@@ -84,26 +131,30 @@ function SettingItem({ icon, label, colors, borderNone }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  headerTitle: { fontSize: 20, fontWeight: "bold" },
+  headerTitle: { fontSize: 22, fontWeight: "bold" },
   card: {
     marginHorizontal: 20,
     borderRadius: 15,
     paddingVertical: 5,
     marginBottom: 20,
-    elevation: 2,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 15,
+    padding: 18,
   },
   leftSide: { flexDirection: "row", alignItems: "center" },
   label: { fontSize: 16, fontWeight: "500", marginLeft: 10 },
@@ -119,9 +170,9 @@ const styles = StyleSheet.create({
   logoutBtn: {
     marginTop: 20,
     marginHorizontal: 40,
-    backgroundColor: "#ff444422",
+    backgroundColor: "#ff444415",
     padding: 15,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#ff4444",

@@ -20,7 +20,6 @@ import SafetyTipsScreen from './src/screens/SafetyTipsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import SettingsScreen from './src/screens/SettingsScreen'; 
-// --- NEW IMPORT ---
 import AddContactScreen from './src/screens/AddContactScreen'; 
 
 // --- Settings Sub-Screens ---
@@ -32,27 +31,27 @@ import SecuritySettings from './src/screens/SecuritySettings';
 const Stack = createNativeStackNavigator();
 
 function AppNavigator() {
-  const { colors, isDarkMode } = useContext(ThemeContext);
+  const { colors, theme } = useContext(ThemeContext);
+  const isDarkMode = theme === 'dark';
 
   return (
     <NavigationContainer>
       <StatusBar 
         barStyle={isDarkMode ? "light-content" : "dark-content"} 
-        backgroundColor={colors?.background || '#020617'} 
+        backgroundColor={isDarkMode ? '#0f2027' : '#f5f5f5'} 
       />
       
       <Stack.Navigator 
         initialRouteName="Home"
         screenOptions={{ 
           headerStyle: { 
-            backgroundColor: colors?.card || '#0f172a',
-            elevation: 0,
-            shadowOpacity: 0,
+            backgroundColor: colors?.card || (isDarkMode ? '#1c2733' : '#ffffff'),
           }, 
-          headerTintColor: colors?.text || '#FFFFFF', 
+          headerTintColor: colors?.text || (isDarkMode ? '#FFFFFF' : '#000000'), 
           headerTitleStyle: { fontWeight: 'bold' },
+          headerBackTitleVisible: false,
           animation: 'slide_from_right',
-          contentStyle: { backgroundColor: colors?.background || '#020617' } 
+          contentStyle: { backgroundColor: colors?.background || (isDarkMode ? '#0E1621' : '#f5f5f5') } 
         }}
       >
         {/* --- Primary Screens --- */}
@@ -66,8 +65,6 @@ function AppNavigator() {
         <Stack.Screen name="ReliefCenterScreen" component={ReliefCenterScreen} options={{ title: 'Relief Centers' }} />
         <Stack.Screen name="EmergencyContactsScreen" component={EmergencyContactsScreen} options={{ title: 'Emergency Helplines' }} />
         <Stack.Screen name="SafetyTipsScreen" component={SafetyTipsScreen} options={{ title: 'Safety Manual' }} />
-        
-        {/* --- NEW SCREEN --- */}
         <Stack.Screen name="AddContact" component={AddContactScreen} options={{ title: 'Add Personal Contact' }} />
         
         {/* --- Profile & Main Settings --- */}
@@ -75,11 +72,11 @@ function AppNavigator() {
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} /> 
         <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Safe Nepal' }} />
 
-        {/* --- Setting Details --- */}
-        <Stack.Screen name="AccountSettings" component={AccountSettings} options={{ title: 'Account Settings' }} />
-        <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: 'Notifications' }} />
-        <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={{ title: 'Privacy Policy' }} />
-        <Stack.Screen name="SecuritySettings" component={SecuritySettings} options={{ title: 'Security & Safety' }} />
+        {/* --- Setting Details (Route names updated for button compatibility) --- */}
+        <Stack.Screen name="Account" component={AccountSettings} options={{ title: 'Account Settings' }} />
+        <Stack.Screen name="Notifications" component={NotificationSettings} options={{ title: 'Notifications' }} />
+        <Stack.Screen name="Privacy" component={PrivacySettings} options={{ title: 'Privacy Policy' }} />
+        <Stack.Screen name="Security" component={SecuritySettings} options={{ title: 'Security & Safety' }} />
 
       </Stack.Navigator>
     </NavigationContainer>
