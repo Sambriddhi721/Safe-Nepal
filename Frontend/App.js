@@ -3,7 +3,7 @@ import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// --- Context & Theming ---
+// --- Context & Providers ---
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext'; 
 
 // --- Screens ---
@@ -21,6 +21,10 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import SettingsScreen from './src/screens/SettingsScreen'; 
 import AddContactScreen from './src/screens/AddContactScreen'; 
+
+// --- Helper/Admin Interface Screens ---
+import HelperDashboardScreen from './src/screens/HelperDashboardScreen';
+import SOSListScreen from './src/screens/SOSListScreen';
 
 // --- Settings Sub-Screens ---
 import AccountSettings from './src/screens/AccountSettings';
@@ -54,25 +58,27 @@ function AppNavigator() {
           contentStyle: { backgroundColor: colors?.background || (isDarkMode ? '#0E1621' : '#f5f5f5') } 
         }}
       >
-        {/* --- Primary Screens --- */}
+        {/* --- CITIZEN INTERFACE --- */}
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} options={{ title: 'Hazard Map' }} />
         <Stack.Screen name="NewReport" component={ReportDisasterScreen} options={{ title: 'Submit Report' }} />
         <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My Reports' }} />
         <Stack.Screen name="SOSScreen" component={SOSScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AlertScreen" component={AlertScreen} options={{ title: 'Disaster Alerts' }} />
-        <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} options={{ title: 'Hazard Map' }} />
         <Stack.Screen name="PredictionAnalyticsScreen" component={PredictionAnalyticsScreen} options={{ title: 'Risk Analysis' }} />
         <Stack.Screen name="ReliefCenterScreen" component={ReliefCenterScreen} options={{ title: 'Relief Centers' }} />
         <Stack.Screen name="EmergencyContactsScreen" component={EmergencyContactsScreen} options={{ title: 'Emergency Helplines' }} />
         <Stack.Screen name="SafetyTipsScreen" component={SafetyTipsScreen} options={{ title: 'Safety Manual' }} />
         <Stack.Screen name="AddContact" component={AddContactScreen} options={{ title: 'Add Personal Contact' }} />
         
-        {/* --- Profile & Main Settings --- */}
+        {/* --- HELPER INTERFACE --- */}
+        <Stack.Screen name="HelperDashboard" component={HelperDashboardScreen} options={{ title: 'Responder Hub' }} />
+        <Stack.Screen name="SOSList" component={SOSListScreen} options={{ title: 'Active SOS Alerts' }} />
+
+        {/* --- SHARED SCREENS --- */}
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} /> 
         <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Safe Nepal' }} />
-
-        {/* --- Setting Details (Route names updated for button compatibility) --- */}
         <Stack.Screen name="Account" component={AccountSettings} options={{ title: 'Account Settings' }} />
         <Stack.Screen name="Notifications" component={NotificationSettings} options={{ title: 'Notifications' }} />
         <Stack.Screen name="Privacy" component={PrivacySettings} options={{ title: 'Privacy Policy' }} />

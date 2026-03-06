@@ -4,8 +4,10 @@ import {
   Switch, StatusBar, Alert, ActivityIndicator
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-// We use the unified storage service to persist these settings
-import { saveSetting, getSetting } from "../services/storage";
+
+// --- FIXED IMPORT ---
+// Updated from "../services/storage" to your actual file "../services/dbService"
+import { saveSetting, getSetting } from "../services/dbService";
 
 export default function PrivacySettings({ navigation }) {
   const theme = {
@@ -162,22 +164,3 @@ function PrivacyRow({ theme, icon, label, detail, value, onToggle }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 60, paddingBottom: 15 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold' },
-  backBtn: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
-  sectionLabel: { fontSize: 13, fontWeight: '600', color: '#64748b', marginBottom: 10, marginTop: 25, marginLeft: 4, textTransform: 'uppercase' },
-  cardGroup: { borderRadius: 16, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  iconBox: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
-  textWrapper: { flex: 1, paddingRight: 10 },
-  rowText: { fontSize: 16, fontWeight: '600' },
-  rowDetail: { fontSize: 12, marginTop: 2 },
-  divider: { height: 1, marginHorizontal: 16 },
-  footerInfo: { textAlign: 'center', marginTop: 30, fontSize: 12, lineHeight: 18, paddingHorizontal: 20 }
-});

@@ -8,11 +8,11 @@ import {
   ScrollView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 // Import Context and Storage Service
 import { ThemeContext } from "../context/ThemeContext";
-import { saveSetting, getSetting } from "../services/storage";
+import { saveSetting, getSetting } from "../services/dbService";
 
 export default function SettingsScreen({ navigation }) {
   const { theme, toggleTheme, colors } = useContext(ThemeContext);
@@ -41,7 +41,7 @@ export default function SettingsScreen({ navigation }) {
       colors={isDark ? ["#0f2027", "#203a43", "#2c5364"] : ["#f5f5f5", "#eaeaea", "#ffffff"]}
       style={styles.container}
     >
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* CUSTOM HEADER */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -67,10 +67,22 @@ export default function SettingsScreen({ navigation }) {
           </View>
         </View>
 
+        {/* --- AUTHORITIES SECTION (NEW) --- */}
+        <Text style={styles.sectionLabel}>Authorized Personnel Only</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: '#60A5FA', borderWidth: 0.5 }]}>
+          <SettingItem 
+            icon="shield-account-outline" 
+            label="Responder Portal" 
+            colors={colors} 
+            borderNone
+            isMaterial={true}
+            onPress={() => navigation.navigate('HelperDashboard')} 
+          />
+        </View>
+
         {/* ACCOUNT SETTINGS SECTION */}
         <Text style={styles.sectionLabel}>Account Settings</Text>
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-          {/* Functional Toggle for Emergency Alerts */}
           <View style={[styles.row, styles.border, { borderColor: 'rgba(255,255,255,0.1)' }]}>
             <View style={styles.leftSide}>
               <Ionicons name="notifications-outline" size={20} color={colors.primary} />
@@ -84,7 +96,6 @@ export default function SettingsScreen({ navigation }) {
             />
           </View>
 
-          {/* Navigable Items */}
           <SettingItem 
             icon="lock-closed-outline" 
             label="Privacy" 
@@ -107,21 +118,27 @@ export default function SettingsScreen({ navigation }) {
         >
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
+        
+        <View style={{ height: 40 }} />
       </ScrollView>
     </LinearGradient>
   );
 }
 
-// Reusable Row Component with Navigation capability
-function SettingItem({ icon, label, colors, borderNone, onPress }) {
+// Reusable Row Component
+function SettingItem({ icon, label, colors, borderNone, onPress, isMaterial = false }) {
   return (
     <TouchableOpacity 
       onPress={onPress}
       style={[styles.row, !borderNone && styles.border, { borderColor: 'rgba(255,255,255,0.1)' }]}
     >
       <View style={styles.leftSide}>
-        <Ionicons name={icon} size={20} color={colors.primary} />
-        <Text style={[styles.label, { color: colors.text }]}> {label}</Text>
+        {isMaterial ? (
+          <MaterialCommunityIcons name={icon} size={22} color="#60A5FA" />
+        ) : (
+          <Ionicons name={icon} size={20} color={colors.primary} />
+        )}
+        <Text style={[styles.label, { color: label === "Responder Portal" ? "#60A5FA" : colors.text }]}> {label}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color="#888" />
     </TouchableOpacity>
