@@ -6,7 +6,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 export default function NotificationSettings({ navigation }) {
-  // Theme consistent with Deep Blue/Black design
+  // Theme consistent with your Safe Nepal deep blue design
   const theme = {
     bg: "#020617",
     card: "#0f172a",
@@ -17,7 +17,6 @@ export default function NotificationSettings({ navigation }) {
     success: "#22c55e"
   };
 
-  // State for different notification types
   const [alerts, setAlerts] = useState({
     push: true,
     email: false,
@@ -36,7 +35,10 @@ export default function NotificationSettings({ navigation }) {
       
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity 
+          onPress={() => navigation?.canGoBack() ? navigation.goBack() : null} 
+          style={styles.backBtn}
+        >
           <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Notifications</Text>
@@ -45,12 +47,11 @@ export default function NotificationSettings({ navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
-        {/* PRIMARY TOGGLE SECTION */}
         <Text style={styles.sectionLabel}>Master Settings</Text>
         <View style={[styles.cardGroup, { backgroundColor: theme.card }]}>
           <NotificationRow 
             theme={theme} 
-            icon="notifications-active" 
+            icon="notifications-outline" 
             label="Push Notifications" 
             detail="Allow app to send alerts to your device"
             value={alerts.push}
@@ -58,12 +59,11 @@ export default function NotificationSettings({ navigation }) {
           />
         </View>
 
-        {/* ALERTS SECTION */}
         <Text style={styles.sectionLabel}>Disaster Alerts</Text>
         <View style={[styles.cardGroup, { backgroundColor: theme.card }]}>
           <NotificationRow 
             theme={theme} 
-            icon="warning" 
+            icon="alert-circle-outline" 
             label="Emergency Alerts" 
             detail="Critical weather & disaster warnings"
             value={alerts.disaster}
@@ -72,7 +72,7 @@ export default function NotificationSettings({ navigation }) {
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <NotificationRow 
             theme={theme} 
-            icon="rainy" 
+            icon="rainy-outline" 
             label="Rainfall Updates" 
             detail="Get notified about heavy rain in Nepal"
             value={alerts.rain}
@@ -80,12 +80,11 @@ export default function NotificationSettings({ navigation }) {
           />
         </View>
 
-        {/* CHANNEL SECTION */}
         <Text style={styles.sectionLabel}>Other Channels</Text>
         <View style={[styles.cardGroup, { backgroundColor: theme.card }]}>
           <NotificationRow 
             theme={theme} 
-            icon="mail" 
+            icon="mail-outline" 
             label="Email Notifications" 
             detail="Weekly summaries and safety tips"
             value={alerts.email}
@@ -94,7 +93,7 @@ export default function NotificationSettings({ navigation }) {
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <NotificationRow 
             theme={theme} 
-            icon="newspaper" 
+            icon="newspaper-outline" 
             label="App News" 
             detail="Updates about new features"
             value={alerts.news}
@@ -110,7 +109,6 @@ export default function NotificationSettings({ navigation }) {
   );
 }
 
-// Sub-component for clean toggle rows
 function NotificationRow({ theme, icon, label, detail, value, onToggle }) {
   return (
     <View style={styles.row}>
@@ -127,7 +125,7 @@ function NotificationRow({ theme, icon, label, detail, value, onToggle }) {
         value={value} 
         onValueChange={onToggle}
         trackColor={{ false: "#334155", true: theme.success }}
-        thumbColor={Platform.OS === 'ios' ? '#fff' : value ? theme.text : '#94a3b8'}
+        thumbColor={Platform.OS === 'ios' ? '#fff' : value ? '#fff' : '#94a3b8'}
       />
     </View>
   );

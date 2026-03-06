@@ -79,10 +79,28 @@ function AppNavigator() {
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} /> 
         <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Safe Nepal' }} />
-        <Stack.Screen name="Account" component={AccountSettings} options={{ title: 'Account Settings' }} />
-        <Stack.Screen name="Notifications" component={NotificationSettings} options={{ title: 'Notifications' }} />
-        <Stack.Screen name="Privacy" component={PrivacySettings} options={{ title: 'Privacy Policy' }} />
-        <Stack.Screen name="Security" component={SecuritySettings} options={{ title: 'Security & Safety' }} />
+
+        {/* --- SETTINGS SUB-SCREENS (FIXED NAMES) --- */}
+        <Stack.Screen 
+          name="AccountSettings" 
+          component={AccountSettings} 
+          options={{ title: 'Account Settings' }} 
+        />
+        <Stack.Screen 
+          name="NotificationSettings" 
+          component={NotificationSettings} 
+          options={{ title: 'Notifications' }} 
+        />
+        <Stack.Screen 
+          name="PrivacySettings" 
+          component={PrivacySettings} 
+          options={{ title: 'Privacy Policy' }} 
+        />
+        <Stack.Screen 
+          name="SecuritySettings" 
+          component={SecuritySettings} 
+          options={{ title: 'Security & Safety' }} 
+        />
 
       </Stack.Navigator>
     </NavigationContainer>
