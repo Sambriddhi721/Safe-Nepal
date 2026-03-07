@@ -1,25 +1,23 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Switch, StatusBar, Alert, ActivityIndicator
+  Switch, StatusBar, Alert, ActivityIndicator, SafeAreaView
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// --- FIXED IMPORT ---
-// Updated from "../services/storage" to your actual file "../services/dbService"
-import { saveSetting, getSetting } from "../services/dbService";
+// Define theme outside to avoid re-renders
+const theme = {
+  bg: "#020617",
+  card: "#0f172a",
+  text: "#F1F5F9",
+  subText: "#94A3B8",
+  border: "#1e293b",
+  accent: "#3b82f6",
+  success: "#22c55e"
+};
 
 export default function PrivacySettings({ navigation }) {
-  const theme = {
-    bg: "#020617",
-    card: "#0f172a",
-    text: "#F1F5F9",
-    subText: "#94A3B8",
-    border: "#1e293b",
-    accent: "#3b82f6",
-    success: "#22c55e"
-  };
-
   const [isLoading, setIsLoading] = useState(true);
   const [privacy, setPrivacy] = useState({
     location: true,
@@ -27,37 +25,43 @@ export default function PrivacySettings({ navigation }) {
     publicProfile: true,
   });
 
-  // 1. Load persisted data when the screen opens
+  // 1. Load data safely
   useEffect(() => {
     const loadPrivacyData = async () => {
       try {
-        const location = await getSetting('privacy_location', true);
-        const analytics = await getSetting('privacy_analytics', false);
-        const publicProfile = await getSetting('privacy_public', true);
+        const keys = ['@priv_loc', '@priv_anlyt', '@priv_pub'];
+        const stores = await AsyncStorage.multiGet(keys);
         
-        setPrivacy({
-          location,
-          analytics,
-          publicProfile
-        });
+        if (stores) {
+          setPrivacy({
+            location: stores[0][1] !== null ? JSON.parse(stores[0][1]) : true,
+            analytics: stores[1][1] !== null ? JSON.parse(stores[1][1]) : false,
+            publicProfile: stores[2][1] !== null ? JSON.parse(stores[2][1]) : true,
+          });
+        }
       } catch (err) {
-        console.error("Failed to load privacy settings", err);
+        console.warn("Storage Load Error:", err);
       } finally {
+        // Ensure loading state is turned off even if storage fails
         setIsLoading(false);
       }
     };
     loadPrivacyData();
   }, []);
 
-  // 2. Save choice to AsyncStorage whenever a switch is toggled
+  // 2. Persist data safely
   const toggleSwitch = async (key, storageKey) => {
-    const newValue = !privacy[key];
-    
-    // Update local state for immediate UI feedback
-    setPrivacy(prev => ({ ...prev, [key]: newValue }));
-    
-    // Persist to storage
-    await saveSetting(storageKey, newValue);
+    try {
+      const newValue = !privacy[key];
+      // Update UI first for speed (Optimistic UI)
+      setPrivacy(prev => ({ ...prev, [key]: newValue }));
+      // Save to disk
+      await AsyncStorage.setItem(`@${storageKey}`, JSON.stringify(newValue));
+    } catch (err) {
+      Alert.alert("Error", "Could not save your setting.");
+      // Rollback UI on failure
+      setPrivacy(prev => ({ ...prev, [key]: !prev[key] }));
+    }
   };
 
   if (isLoading) {
@@ -69,56 +73,53 @@ export default function PrivacySettings({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle="light-content" />
       
-      {/* HEADER */}
+      {/* HEADER - Using optional chaining ?. to prevent 'undefined' errors */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity 
+          onPress={() => navigation?.goBack()} 
+          style={styles.backBtn}
+        >
           <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Privacy</Text>
-        <View style={{ width: 40 }} />
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Privacy Settings</Text>
+        <View style={{ width: 40 }} /> 
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
-        {/* PERMISSIONS SECTION */}
         <Text style={styles.sectionLabel}>Permissions</Text>
         <View style={[styles.cardGroup, { backgroundColor: theme.card }]}>
           <PrivacyRow 
-            theme={theme} 
             icon="location" 
             label="Location Services" 
             detail="Used for precise weather and disaster alerts"
             value={privacy.location}
-            onToggle={() => toggleSwitch('location', 'privacy_location')}
+            onToggle={() => toggleSwitch('location', 'priv_loc')}
           />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <PrivacyRow 
-            theme={theme} 
             icon="stats-chart" 
             label="Usage Analytics" 
             detail="Help us improve by sharing anonymous data"
             value={privacy.analytics}
-            onToggle={() => toggleSwitch('analytics', 'privacy_analytics')}
+            onToggle={() => toggleSwitch('analytics', 'priv_anlyt')}
           />
         </View>
 
-        {/* VISIBILITY SECTION */}
         <Text style={styles.sectionLabel}>Visibility</Text>
         <View style={[styles.cardGroup, { backgroundColor: theme.card }]}>
           <PrivacyRow 
-            theme={theme} 
             icon="eye" 
             label="Public Profile" 
             detail="Allow others to see your contributions"
             value={privacy.publicProfile}
-            onToggle={() => toggleSwitch('publicProfile', 'privacy_public')}
+            onToggle={() => toggleSwitch('publicProfile', 'priv_pub')}
           />
         </View>
 
-        {/* DATA MANAGEMENT SECTION */}
         <Text style={styles.sectionLabel}>Your Data</Text>
         <View style={[styles.cardGroup, { backgroundColor: theme.card }]}>
           <TouchableOpacity 
@@ -126,7 +127,7 @@ export default function PrivacySettings({ navigation }) {
             onPress={() => Alert.alert("Request Sent", "A copy of your data will be sent to your email.")}
           >
             <View style={styles.rowLeft}>
-              <View style={[styles.iconBox, { backgroundColor: '#1e293b' }]}>
+              <View style={styles.iconBox}>
                 <Ionicons name="download-outline" size={18} color={theme.accent} />
               </View>
               <Text style={[styles.rowText, { color: theme.text }]}>Download My Data</Text>
@@ -139,15 +140,16 @@ export default function PrivacySettings({ navigation }) {
           We value your privacy. Your data is encrypted and never sold to third parties.
         </Text>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
-function PrivacyRow({ theme, icon, label, detail, value, onToggle }) {
+// Sub-component for rows
+function PrivacyRow({ icon, label, detail, value, onToggle }) {
   return (
     <View style={styles.row}>
       <View style={styles.rowLeft}>
-        <View style={[styles.iconBox, { backgroundColor: '#1e293b' }]}>
+        <View style={styles.iconBox}>
           <Ionicons name={icon} size={18} color={theme.accent} />
         </View>
         <View style={styles.textWrapper}>
@@ -158,9 +160,28 @@ function PrivacyRow({ theme, icon, label, detail, value, onToggle }) {
       <Switch 
         value={value} 
         onValueChange={onToggle}
-        thumbColor={value ? "#FFFFFF" : "#94A3B8"}
         trackColor={{ false: "#334155", true: theme.success }}
+        thumbColor="#FFFFFF"
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
+  headerTitle: { fontSize: 18, fontWeight: '700' },
+  backBtn: { padding: 8 },
+  scrollContent: { padding: 20 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginLeft: 4 },
+  cardGroup: { borderRadius: 16, marginBottom: 24, overflow: 'hidden', borderWidth: 1, borderColor: '#1e293b' },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  iconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  textWrapper: { flex: 1 },
+  rowText: { fontSize: 16, fontWeight: '600' },
+  rowDetail: { fontSize: 12, marginTop: 2 },
+  divider: { height: 1, width: '100%', backgroundColor: '#1e293b' },
+  actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  footerInfo: { textAlign: 'center', fontSize: 12, marginTop: 10, paddingHorizontal: 30 },
+});

@@ -1,68 +1,41 @@
-import React, { createContext, useState, useEffect, useMemo } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
+import React, { createContext, useState, useMemo } from "react";
 
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // 1. FORCED INITIAL STATE
-  // We set a fake user and token immediately so there is no "blink" of a login screen
+  // We start with a DEFAULT user so you don't have to log in manually every time
   const [user, setUser] = useState({
     id: "dev-123",
-    name: "Developer Admin",
-    email: "dev@nepaldisasterwatch.com",
-    role: "USER",
-    email_verified: true,
+    full_name: "Developer Admin",
+    role: "USER", 
   });
   const [token, setToken] = useState("fake-dev-token");
-  const [loading, setLoading] = useState(false); // Force loading to false
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // We keep this empty for development so it doesn't try to 
-    // fetch real data or check local storage.
-    console.log("Auth System: Development Bypass Active (Home Screen Enabled)");
-  }, []);
-
-  // 2. MOCK FUNCTIONS
-  // These functions won't do anything for now to prevent storage/network errors
   const signIn = async (userData, jwtToken) => {
     setUser(userData);
     setToken(jwtToken);
   };
 
   const signOut = async () => {
+    console.log("Auth: Clearing session...");
     setUser(null);
     setToken(null);
   };
 
-  const updateUser = async (newUserData) => {
-    setUser(newUserData);
-  };
-
-  // 3. FORCED NAVIGATION FLAGS
-  // These variables are what your Navigation uses to decide which screen to show.
-  // By forcing them to true/false here, we bypass all login/signup logic.
-  const value = useMemo(
-    () => ({
-      user,
-      token,
-      loading,
-      signIn,
-      signOut,
-      updateUser,
-      isAuthenticated: true,   // Always true
-      isVerifiedUser: true,    // Skips Email Verification screens
-      emailVerified: true,     // Skips Verification prompts
-      role: "USER",            // Standard user role
-      isUser: true,
-      isHelper: false,
-    }),
-    [user, token, loading]
-  );
+  const authValue = useMemo(() => ({
+    user,
+    token,
+    loading,
+    signIn,
+    signOut,
+    isAuthenticated: !!token, 
+    role: user?.role || "GUEST",
+    isHelper: true, // Forced to true so you can test the Responder Portal
+  }), [user, token, loading]);
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={authValue}>
       {children}
     </AuthContext.Provider>
   );
