@@ -4,56 +4,34 @@
     "slug": "SafeNepalApp",
     "version": "1.0.0",
     "scheme": "safenepalapp",
-    "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0E1621"
-    },
     "ios": {
-      "supportsTablet": true,
       "bundleIdentifier": "com.esprihya.safenepalapp",
+      "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "This app needs your location to send SOS alerts during disasters."
+        "NSLocationWhenInUseUsageDescription": "SafeNepalApp uses your location to show nearby help.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "SafeNepalApp needs background location for emergency tracking."
       }
     },
     "android": {
       "package": "com.esprihya.safenepalapp",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDummyKeyForDevelopmentOnly123456789"
-        }
-      }
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "INTERNET"
+      ]
     },
     "plugins": [
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Allow SafeNepalApp to use your location for emergency reporting."
-        }
-      ],
+      ["expo-location", { "isAndroidBackgroundLocationEnabled": true }],
+      ["react-native-maps"], 
       [
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true,
-            "permissions": [
-              "INTERNET",
-              "ACCESS_NETWORK_STATE",
-              "ACCESS_COARSE_LOCATION",
-              "ACCESS_FINE_LOCATION",
-              "SEND_SMS"
-            ]
+            "usesCleartextTraffic": true
           }
         }
       ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "17cb65ce-f6dd-44f7-900d-87a0ac153076"
-      }
-    }
+    ]
   }
 }
