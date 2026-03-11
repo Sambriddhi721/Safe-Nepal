@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "SafeNepalApp",
+    "slug": "SafeNepalApp",
+    "version": "1.0.0",
+    "scheme": "safenepalapp",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.esprihya.safenepalapp",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "SafeNepalApp uses your location to show nearby help.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "SafeNepalApp needs background location for emergency tracking."
+      }
+    },
+    "android": {
+      "package": "com.esprihya.safenepalapp",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "INTERNET"
+      ]
+    },
+    "plugins": [
+      ["expo-location", { "isAndroidBackgroundLocationEnabled": true }],
+      ["react-native-maps"], 
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ]
+  }
+}

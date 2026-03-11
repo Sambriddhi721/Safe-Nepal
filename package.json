@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "name": "safenepalapp",
   "version": "1.0.0",
   "private": true,
@@ -47,3 +48,22 @@
     "socket.io-client": "^4.8.1"
   }
 }
+=======
+  "name": "safe-nepal",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "multer": "^2.0.2"
+  }
+}
+>>>>>>> 6ffa5e59eae1fa318f7291878b68ba30ef4a6a9c
