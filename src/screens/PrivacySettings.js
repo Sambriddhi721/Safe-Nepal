@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Switch, StatusBar, Alert, ActivityIndicator, SafeAreaView
+  Switch, StatusBar, Alert, ActivityIndicator, SafeAreaView, Platform
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Define theme outside to avoid re-renders
+// Constants for Storage Keys to prevent typos
+const KEYS = {
+  LOCATION: '@priv_loc',
+  ANALYTICS: '@priv_anlyt',
+  PUBLIC: '@priv_pub'
+};
+
 const theme = {
   bg: "#020617",
   card: "#0f172a",
@@ -25,43 +31,62 @@ export default function PrivacySettings({ navigation }) {
     publicProfile: true,
   });
 
-  // 1. Load data safely
+  // Load Data on Mount
   useEffect(() => {
-    const loadPrivacyData = async () => {
-      try {
-        const keys = ['@priv_loc', '@priv_anlyt', '@priv_pub'];
-        const stores = await AsyncStorage.multiGet(keys);
-        
-        if (stores) {
-          setPrivacy({
-            location: stores[0][1] !== null ? JSON.parse(stores[0][1]) : true,
-            analytics: stores[1][1] !== null ? JSON.parse(stores[1][1]) : false,
-            publicProfile: stores[2][1] !== null ? JSON.parse(stores[2][1]) : true,
-          });
-        }
-      } catch (err) {
-        console.warn("Storage Load Error:", err);
-      } finally {
-        // Ensure loading state is turned off even if storage fails
-        setIsLoading(false);
-      }
-    };
     loadPrivacyData();
   }, []);
 
-  // 2. Persist data safely
-  const toggleSwitch = async (key, storageKey) => {
+  const loadPrivacyData = async () => {
     try {
-      const newValue = !privacy[key];
-      // Update UI first for speed (Optimistic UI)
-      setPrivacy(prev => ({ ...prev, [key]: newValue }));
-      // Save to disk
-      await AsyncStorage.setItem(`@${storageKey}`, JSON.stringify(newValue));
+      const stores = await AsyncStorage.multiGet([KEYS.LOCATION, KEYS.ANALYTICS, KEYS.PUBLIC]);
+      
+      // Map results to state, providing defaults if null
+      const mappedSettings = {
+        location: stores[0][1] !== null ? JSON.parse(stores[0][1]) : true,
+        analytics: stores[1][1] !== null ? JSON.parse(stores[1][1]) : false,
+        publicProfile: stores[2][1] !== null ? JSON.parse(stores[2][1]) : true,
+      };
+      
+      setPrivacy(mappedSettings);
     } catch (err) {
-      Alert.alert("Error", "Could not save your setting.");
-      // Rollback UI on failure
-      setPrivacy(prev => ({ ...prev, [key]: !prev[key] }));
+      console.error("Storage Load Error:", err);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Toggle Logic with Error Handling
+  const handleToggle = async (key, storageKey) => {
+    const previousValue = privacy[key];
+    const newValue = !previousValue;
+
+    try {
+      // 1. Optimistic Update (Immediate UI response)
+      setPrivacy(prev => ({ ...prev, [key]: newValue }));
+      
+      // 2. Save to Storage
+      await AsyncStorage.setItem(storageKey, JSON.stringify(newValue));
+      
+      // 3. Optional: Trigger global app logic (like stopping a GPS service)
+      if (key === 'location' && !newValue) {
+        console.log("Stopping Location Services...");
+      }
+    } catch (err) {
+      // 4. Rollback if save fails
+      setPrivacy(prev => ({ ...prev, [key]: previousValue }));
+      Alert.alert("Error", "Your preference couldn't be saved. Please try again.");
+    }
+  };
+
+  const handleDownloadData = () => {
+    Alert.alert(
+      "Confirm Request",
+      "We will compile your data and send a link to your registered email within 24 hours.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Send Request", onPress: () => console.log("Data request sent") }
+      ]
+    );
   };
 
   if (isLoading) {
@@ -76,16 +101,16 @@ export default function PrivacySettings({ navigation }) {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle="light-content" />
       
-      {/* HEADER - Using optional chaining ?. to prevent 'undefined' errors */}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity 
-          onPress={() => navigation?.goBack()} 
+          onPress={() => navigation?.canGoBack() ? navigation.goBack() : Alert.alert("Note", "No back route found")} 
           style={styles.backBtn}
         >
-          <Ionicons name="chevron-back" size={24} color={theme.text} />
+          <Ionicons name="chevron-back" size={26} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Privacy Settings</Text>
-        <View style={{ width: 40 }} /> 
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Privacy</Text>
+        <View style={{ width: 44 }} /> 
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -97,7 +122,7 @@ export default function PrivacySettings({ navigation }) {
             label="Location Services" 
             detail="Used for precise weather and disaster alerts"
             value={privacy.location}
-            onToggle={() => toggleSwitch('location', 'priv_loc')}
+            onToggle={() => handleToggle('location', KEYS.LOCATION)}
           />
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
           <PrivacyRow 
@@ -105,7 +130,7 @@ export default function PrivacySettings({ navigation }) {
             label="Usage Analytics" 
             detail="Help us improve by sharing anonymous data"
             value={privacy.analytics}
-            onToggle={() => toggleSwitch('analytics', 'priv_anlyt')}
+            onToggle={() => handleToggle('analytics', KEYS.ANALYTICS)}
           />
         </View>
 
@@ -116,7 +141,7 @@ export default function PrivacySettings({ navigation }) {
             label="Public Profile" 
             detail="Allow others to see your contributions"
             value={privacy.publicProfile}
-            onToggle={() => toggleSwitch('publicProfile', 'priv_pub')}
+            onToggle={() => handleToggle('publicProfile', KEYS.PUBLIC)}
           />
         </View>
 
@@ -124,7 +149,8 @@ export default function PrivacySettings({ navigation }) {
         <View style={[styles.cardGroup, { backgroundColor: theme.card }]}>
           <TouchableOpacity 
             style={styles.actionRow}
-            onPress={() => Alert.alert("Request Sent", "A copy of your data will be sent to your email.")}
+            onPress={handleDownloadData}
+            activeOpacity={0.7}
           >
             <View style={styles.rowLeft}>
               <View style={styles.iconBox}>
@@ -144,44 +170,72 @@ export default function PrivacySettings({ navigation }) {
   );
 }
 
-// Sub-component for rows
-function PrivacyRow({ icon, label, detail, value, onToggle }) {
-  return (
-    <View style={styles.row}>
-      <View style={styles.rowLeft}>
-        <View style={styles.iconBox}>
-          <Ionicons name={icon} size={18} color={theme.accent} />
-        </View>
-        <View style={styles.textWrapper}>
-          <Text style={[styles.rowText, { color: theme.text }]}>{label}</Text>
-          <Text style={[styles.rowDetail, { color: theme.subText }]}>{detail}</Text>
-        </View>
+// Optimized Sub-component
+const PrivacyRow = React.memo(({ icon, label, detail, value, onToggle }) => (
+  <View style={styles.row}>
+    <View style={styles.rowLeft}>
+      <View style={styles.iconBox}>
+        <Ionicons name={icon} size={20} color={theme.accent} />
       </View>
-      <Switch 
-        value={value} 
-        onValueChange={onToggle}
-        trackColor={{ false: "#334155", true: theme.success }}
-        thumbColor="#FFFFFF"
-      />
+      <View style={styles.textWrapper}>
+        <Text style={[styles.rowText, { color: theme.text }]}>{label}</Text>
+        <Text style={[styles.rowDetail, { color: theme.subText }]}>{detail}</Text>
+      </View>
     </View>
-  );
-}
+    <Switch 
+      value={value} 
+      onValueChange={onToggle}
+      trackColor={{ false: "#334155", true: theme.success }}
+      thumbColor={Platform.OS === 'ios' ? undefined : "#FFFFFF"}
+    />
+  </View>
+));
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  headerTitle: { fontSize: 18, fontWeight: '700' },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 8, 
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#0f172a'
+  },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
   backBtn: { padding: 8 },
   scrollContent: { padding: 20 },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginLeft: 4 },
-  cardGroup: { borderRadius: 16, marginBottom: 24, overflow: 'hidden', borderWidth: 1, borderColor: '#1e293b' },
+  sectionLabel: { 
+    fontSize: 12, 
+    fontWeight: '800', 
+    color: '#64748b', 
+    textTransform: 'uppercase', 
+    letterSpacing: 1.2, 
+    marginBottom: 10, 
+    marginLeft: 4 
+  },
+  cardGroup: { 
+    borderRadius: 16, 
+    marginBottom: 28, 
+    overflow: 'hidden', 
+    borderWidth: 1, 
+    borderColor: '#1e293b' 
+  },
   row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  iconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  textWrapper: { flex: 1 },
+  iconBox: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 12, 
+    backgroundColor: '#1e293b', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginRight: 14 
+  },
+  textWrapper: { flex: 1, paddingRight: 8 },
   rowText: { fontSize: 16, fontWeight: '600' },
-  rowDetail: { fontSize: 12, marginTop: 2 },
-  divider: { height: 1, width: '100%', backgroundColor: '#1e293b' },
-  actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  footerInfo: { textAlign: 'center', fontSize: 12, marginTop: 10, paddingHorizontal: 30 },
+  rowDetail: { fontSize: 13, marginTop: 4, lineHeight: 18 },
+  divider: { height: 1, marginHorizontal: 16 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18 },
+  footerInfo: { textAlign: 'center', fontSize: 13, marginTop: 10, paddingHorizontal: 40, lineHeight: 20 },
 });
