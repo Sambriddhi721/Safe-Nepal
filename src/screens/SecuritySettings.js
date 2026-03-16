@@ -1,110 +1,36 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Switch, StatusBar, Alert, Platform
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import * as LocalAuthentication from 'expo-local-authentication';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ThemeContext } from "../context/ThemeContext";
-
-const STORAGE_KEY = '@user_security_settings';
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Switch,
+  StatusBar,
+  Platform,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { ThemeContext } from '../context/ThemeContext';
 
 export default function SecuritySettings({ navigation }) {
   const { colors, isDarkMode } = useContext(ThemeContext);
 
-  const [security, setSecurity] = useState({
-    biometrics: false,
+  // Local state to manage the UI toggles
+  const [settings, setSettings] = useState({
     twoFactor: false,
+    biometrics: false,
+    dataEncryption: true,
   });
 
-  // 1. Load persisted settings on mount
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const saved = await AsyncStorage.getItem(STORAGE_KEY);
-        if (saved) setSecurity(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to load security settings");
-      }
-    };
-    loadSettings();
-  }, []);
-
-  // 2. Persist settings whenever they change
-  const saveSettings = async (newSettings) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
-    } catch (e) {
-      Alert.alert("Error", "Failed to save security preferences.");
-    }
-  };
-
-  // 3. Logic for Biometric Toggle
-  const handleBiometricToggle = async () => {
-    if (!security.biometrics) {
-      // Check if hardware supports it
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-      if (!hasHardware || !isEnrolled) {
-        return Alert.alert(
-          "Not Supported", 
-          "Your device does not support biometrics or no fingerprints/FaceID are registered."
-        );
-      }
-
-      // Verify user before enabling
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Confirm identity to enable Biometric Lock",
-        fallbackLabel: "Use Passcode",
-      });
-
-      if (result.success) {
-        const newSettings = { ...security, biometrics: true };
-        setSecurity(newSettings);
-        saveSettings(newSettings);
-      }
-    } else {
-      // Simple disable
-      const newSettings = { ...security, biometrics: false };
-      setSecurity(newSettings);
-      saveSettings(newSettings);
-    }
-  };
-
-  // 4. Logic for 2FA (Mocking the navigation to setup)
-  const handle2FAToggle = () => {
-    if (!security.twoFactor) {
-      Alert.alert(
-        "Enable 2FA",
-        "We will send a verification code to your registered phone number.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Setup", 
-            onPress: () => {
-              const newSettings = { ...security, twoFactor: true };
-              setSecurity(newSettings);
-              saveSettings(newSettings);
-            } 
-          }
-        ]
-      );
-    } else {
-      setSecurity(prev => {
-        const updated = { ...prev, twoFactor: false };
-        saveSettings(updated);
-        return updated;
-      });
-    }
+  const toggleSwitch = (key) => {
+    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
-      
-      {/* HEADER */}
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+
+      {/* Header */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 20 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={colors.text} />
@@ -113,79 +39,74 @@ export default function SecuritySettings({ navigation }) {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={[styles.sectionLabel, { color: colors.subText }]}>Login & Access</Text>
         
-        <Text style={[styles.sectionLabel, { color: colors.subText }]}>Login Security</Text>
-        <View style={[styles.cardGroup, { backgroundColor: colors.card }]}>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          {/* Change Password Link */}
           <TouchableOpacity 
             style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
-            onPress={() => navigation.navigate("ChangePassword")} 
+            onPress={() => navigation.navigate('SecuritySettings')} // You can update this to a specific ChangePassword screen later
           >
             <View style={styles.rowLeft}>
-              <View style={[styles.iconBox, { backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9' }]}>
-                <Ionicons name="key-outline" size={18} color={colors.accent} />
-              </View>
+              <Ionicons name="key-outline" size={22} color={colors.accent} />
               <Text style={[styles.rowText, { color: colors.text }]}>Change Password</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.subText} />
+            <Ionicons name="chevron-forward" size={20} color={colors.subText} />
           </TouchableOpacity>
 
+          {/* Biometric Toggle (Visual only for now) */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
-              <View style={[styles.iconBox, { backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9' }]}>
-                <Ionicons name="finger-print-outline" size={18} color={colors.accent} />
-              </View>
-              <View style={styles.textWrapper}>
+              <Ionicons name="finger-print-outline" size={22} color={colors.accent} />
+              <View style={styles.textStack}>
                 <Text style={[styles.rowText, { color: colors.text }]}>Biometric Lock</Text>
-                <Text style={[styles.rowDetail, { color: colors.subText }]}>Use FaceID or Fingerprint</Text>
+                <Text style={[styles.rowSubtext, { color: colors.subText }]}>Use FaceID or Fingerprint</Text>
               </View>
             </View>
-            <Switch 
-              value={security.biometrics} 
-              onValueChange={handleBiometricToggle}
-              trackColor={{ false: "#334155", true: colors.success }}
-              thumbColor="#fff"
+            <Switch
+              value={settings.biometrics}
+              onValueChange={() => toggleSwitch('biometrics')}
+              trackColor={{ false: '#3e3e3e', true: colors.accent }}
             />
           </View>
         </View>
 
         <Text style={[styles.sectionLabel, { color: colors.subText }]}>Advanced Protection</Text>
-        <View style={[styles.cardGroup, { backgroundColor: colors.card }]}>
+        
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          {/* 2FA Toggle */}
           <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
             <View style={styles.rowLeft}>
-              <View style={[styles.iconBox, { backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9' }]}>
-                <Ionicons name="shield-half-outline" size={18} color={colors.accent} />
-              </View>
-              <View style={styles.textWrapper}>
-                <Text style={[styles.rowText, { color: colors.text }]}>Two-Factor Auth</Text>
-                <Text style={[styles.rowDetail, { color: colors.subText }]}>Secure your account via SMS</Text>
-              </View>
+              <Ionicons name="shield-checkmark-outline" size={22} color={colors.accent} />
+              <Text style={[styles.rowText, { color: colors.text }]}>Two-Factor Auth</Text>
             </View>
-            <Switch 
-              value={security.twoFactor} 
-              onValueChange={handle2FAToggle}
-              trackColor={{ false: "#334155", true: colors.success }}
-              thumbColor="#fff"
+            <Switch
+              value={settings.twoFactor}
+              onValueChange={() => toggleSwitch('twoFactor')}
+              trackColor={{ false: '#3e3e3e', true: colors.accent }}
             />
           </View>
 
+          {/* Active Sessions Link */}
           <TouchableOpacity 
-            style={styles.row} 
-            onPress={() => navigation.navigate("ActiveSessions")}
+            style={styles.row}
+            onPress={() => console.log('Navigate to Sessions')}
           >
             <View style={styles.rowLeft}>
-              <View style={[styles.iconBox, { backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9' }]}>
-                <Ionicons name="laptop-outline" size={18} color={colors.accent} />
-              </View>
+              <Ionicons name="phone-portrait-outline" size={22} color={colors.accent} />
               <Text style={[styles.rowText, { color: colors.text }]}>Active Sessions</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.subText} />
+            <Ionicons name="chevron-forward" size={20} color={colors.subText} />
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.footerInfo, { color: colors.subText }]}>
-          Keep your security settings updated to protect your disaster reporting data.
-        </Text>
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle-outline" size={20} color={colors.subText} />
+          <Text style={[styles.infoText, { color: colors.subText }]}>
+            Enabling these features helps protect your disaster reports and personal data on Safe Nepal.
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -193,31 +114,40 @@ export default function SecuritySettings({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: 16, 
-    paddingBottom: 15 
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 15,
   },
   headerTitle: { fontSize: 18, fontWeight: '700' },
-  backBtn: { width: 40, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
-  sectionLabel: { 
-    fontSize: 11, 
-    fontWeight: '800', 
-    marginBottom: 10, 
-    marginTop: 25, 
-    marginLeft: 4, 
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  scrollContent: { padding: 16 },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 8,
+    marginTop: 20,
     textTransform: 'uppercase',
-    letterSpacing: 1.2
+    marginLeft: 4,
   },
-  cardGroup: { borderRadius: 20, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18 },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  iconBox: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
-  textWrapper: { flex: 1, paddingRight: 10 },
-  rowText: { fontSize: 16, fontWeight: '600' },
-  rowDetail: { fontSize: 12, marginTop: 4, opacity: 0.8 },
-  footerInfo: { textAlign: 'center', marginTop: 30, fontSize: 12, lineHeight: 20, paddingHorizontal: 30, opacity: 0.7 }
+  card: { borderRadius: 16, overflow: 'hidden' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  rowLeft: { flexDirection: 'row', alignItems: 'center' },
+  rowText: { fontSize: 16, fontWeight: '500', marginLeft: 12 },
+  textStack: { marginLeft: 12 },
+  rowSubtext: { fontSize: 12, marginTop: 2 },
+  infoBox: {
+    flexDirection: 'row',
+    marginTop: 30,
+    paddingHorizontal: 10,
+    alignItems: 'flex-start',
+  },
+  infoText: { fontSize: 13, marginLeft: 8, lineHeight: 18, flex: 1 },
 });

@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, 
-  StatusBar, Switch, Alert, Image
+  StatusBar, Switch, Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function LinkedAccountsScreen({ navigation }) {
-  // Local state to simulate account connections
   const [links, setLinks] = useState({
     google: true,
     facebook: false,
@@ -42,12 +41,12 @@ export default function LinkedAccountsScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle="light-content" />
       
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Linked Accounts</Text>
+        {/* FIXED: Changed <div> to <View> */}
         <View style={{ width: 40 }} />
       </View>
 
@@ -56,7 +55,6 @@ export default function LinkedAccountsScreen({ navigation }) {
           Connected accounts help us verify your reports and provide faster assistance during emergencies.
         </Text>
 
-        {/* SOCIAL ACCOUNTS */}
         <Text style={styles.sectionLabel}>Social & Identity</Text>
         <View style={[styles.cardGroup, { backgroundColor: theme.card }]}>
           <AccountRow 
@@ -78,7 +76,6 @@ export default function LinkedAccountsScreen({ navigation }) {
           />
         </View>
 
-        {/* NEPAL SPECIFIC SERVICES */}
         <Text style={styles.sectionLabel}>Local Services & Wallets</Text>
         <View style={[styles.cardGroup, { backgroundColor: theme.card }]}>
           <AccountRow 
@@ -106,7 +103,6 @@ export default function LinkedAccountsScreen({ navigation }) {
             Your data is encrypted. We never post to your social accounts without permission.
           </Text>
         </View>
-
       </ScrollView>
     </View>
   );
@@ -142,17 +138,14 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700' },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   scrollContent: { padding: 20 },
-  
   description: { fontSize: 14, lineHeight: 20, marginBottom: 25 },
   sectionLabel: { fontSize: 12, fontWeight: '800', color: '#64748b', marginBottom: 10, textTransform: 'uppercase', marginLeft: 5 },
-  
   cardGroup: { borderRadius: 20, overflow: 'hidden', marginBottom: 25 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
   rowLeft: { flexDirection: 'row', alignItems: 'center' },
   iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   rowText: { fontSize: 16, fontWeight: '600', marginLeft: 15 },
   divider: { height: 1, marginLeft: 70 },
-
   infoBox: { flexDirection: 'row', alignItems: 'center', marginTop: 10, paddingHorizontal: 10 },
   infoText: { fontSize: 12, marginLeft: 10, flex: 1 }
 });

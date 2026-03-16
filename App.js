@@ -26,7 +26,8 @@ import AboutScreen from './src/screens/AboutScreen';
 import SettingsScreen from './src/screens/SettingsScreen'; 
 import AddContactScreen from './src/screens/AddContactScreen'; 
 
-// --- Account & Management Screens (NEW) ---
+// --- Account & Management Screens ---
+// CRITICAL: Ensure these filenames match EXACTLY in /src/screens/
 import AccountScreen from './src/screens/AccountScreen';
 import BillingScreen from './src/screens/BillingScreen';
 import LinkedAccountsScreen from './src/screens/LinkedAccountsScreen';
@@ -36,7 +37,7 @@ import HelperDashboardScreen from './src/screens/HelperDashboardScreen';
 import SOSListScreen from './src/screens/SOSListScreen';
 
 // --- Settings Sub-Screens ---
-import AccountSettings from './src/screens/AccountSettings'; // Also used as "Personal Info"
+import AccountSettings from './src/screens/AccountSettings'; 
 import NotificationSettings from './src/screens/NotificationSettings';
 import PrivacySettings from './src/screens/PrivacySettings';
 import SecuritySettings from './src/screens/SecuritySettings';
@@ -44,7 +45,7 @@ import SecuritySettings from './src/screens/SecuritySettings';
 const Stack = createNativeStackNavigator();
 
 function AppNavigator() {
-  const { colors, theme } = useContext(ThemeContext);
+  const { theme } = useContext(ThemeContext);
   const { token, loading } = useContext(AuthContext); 
   
   const isDarkMode = theme === 'dark';
@@ -60,7 +61,7 @@ function AppNavigator() {
   return (
     <NavigationContainer>
       <StatusBar 
-        barStyle="light-content" 
+        barStyle={isDarkMode ? "light-content" : "dark-content"} 
         backgroundColor={isDarkMode ? '#020617' : '#3b82f6'} 
       />
       
@@ -85,41 +86,39 @@ function AppNavigator() {
           />
         ) : (
           <>
-            {/* Main Tabs/Home */}
+            {/* Essential Core */}
             <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-            
-            {/* Navigation Hubs */}
-            <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} options={{ title: 'Hazard Map' }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} /> 
 
-            {/* Account Management Module (The New Screens) */}
-            <Stack.Screen name="ManageAccount" component={AccountScreen} options={{ headerShown: false }} />
+            {/* Account & Billing (The New Module) */}
+            <Stack.Screen name="ManageAccount" component={AccountScreen} options={{ title: 'Manage Account' }} />
             <Stack.Screen name="Billing" component={BillingScreen} options={{ title: 'Billing & Plans' }} />
             <Stack.Screen name="LinkedAccounts" component={LinkedAccountsScreen} options={{ title: 'Linked Accounts' }} />
             <Stack.Screen name="AccountSettings" component={AccountSettings} options={{ title: 'Personal Information' }} />
 
-            {/* Citizen Actions */}
+            {/* Emergency & Disaster Tools */}
+            <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} options={{ title: 'Hazard Map' }} />
             <Stack.Screen name="NewReport" component={ReportDisasterScreen} options={{ title: 'Submit Report' }} />
             <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My Reports' }} />
             <Stack.Screen name="SOSScreen" component={SOSScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AlertScreen" component={AlertScreen} options={{ title: 'Disaster Alerts' }} />
             
-            {/* Information & Analytics */}
+            {/* Analytics & Support */}
             <Stack.Screen name="PredictionAnalyticsScreen" component={PredictionAnalyticsScreen} options={{ title: 'Risk Analysis' }} />
             <Stack.Screen name="ReliefCenterScreen" component={ReliefCenterScreen} options={{ title: 'Relief Centers' }} />
             <Stack.Screen name="EmergencyContactsScreen" component={EmergencyContactsScreen} options={{ title: 'Emergency Helplines' }} />
             <Stack.Screen name="SafetyTipsScreen" component={SafetyTipsScreen} options={{ title: 'Safety Manual' }} />
             <Stack.Screen name="AddContact" component={AddContactScreen} options={{ title: 'Add Personal Contact' }} />
             
-            {/* Responder Interface */}
+            {/* Responder Tools */}
             <Stack.Screen name="HelperDashboard" component={HelperDashboardScreen} options={{ title: 'Responder Hub' }} />
             <Stack.Screen name="SOSList" component={SOSListScreen} options={{ title: 'Active SOS Alerts' }} />
 
-            {/* Legal & About */}
+            {/* Legal */}
             <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Safe Nepal' }} />
 
-            {/* Sub-Settings */}
+            {/* Nested Settings */}
             <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: 'Notifications' }} />
             <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={{ title: 'Privacy Policy' }} />
             <Stack.Screen name="SecuritySettings" component={SecuritySettings} options={{ title: 'Security & Safety' }} />
