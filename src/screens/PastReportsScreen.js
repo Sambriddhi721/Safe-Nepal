@@ -12,8 +12,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 // --- CONFIG ---
-// UPDATED IP ADDRESS FROM YOUR IPCONFIG OUTPUT
-const SERVER_URL = "http://192.168.111.70:5000"; 
+// Use your active ngrok URL here
+const SERVER_URL = "https://thunderingly-cuspidat-e-app.ngrok-free.app"; 
 const screenWidth = Dimensions.get('window').width;
 
 export default function PastReportsScreen() {
@@ -24,7 +24,20 @@ export default function PastReportsScreen() {
   const fetchReports = async () => {
     setRefreshing(true);
     try {
-      const response = await fetch(`${SERVER_URL}/reports`);
+      const response = await fetch(`${SERVER_URL}/reports`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          // CRITICAL: This bypasses the ngrok warning page that causes fetch errors
+          'ngrok-skip-browser-warning': 'true' 
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+
       const data = await response.json();
       // Reverse to show newest reports first
       setReports(data.reverse());
@@ -44,9 +57,9 @@ export default function PastReportsScreen() {
     <View style={styles.reportCard}>
       <View style={styles.cardHeader}>
         <Text style={styles.categoryText}>{item.category || "General"}</Text>
-        <View style={[styles.statusBadge, item.severity === 'High' ? styles.bgRed : styles.bgBlue]}>
+        <div style={[styles.statusBadge, item.severity === 'High' ? styles.bgRed : styles.bgBlue]}>
           <Text style={styles.statusText}>{item.severity || "Normal"}</Text>
-        </View>
+        </div>
       </View>
       
       <Text style={styles.locationText}>
@@ -119,8 +132,6 @@ const styles = StyleSheet.create({
   statusText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
   locationText: { color: '#2196F3', fontSize: 12, marginBottom: 5 },
   descriptionText: { color: '#D1D5DB', fontSize: 14, marginBottom: 10 },
-  
-  // --- IMAGE STYLES ---
   reportImage: {
     width: '100%',
     height: 200,
