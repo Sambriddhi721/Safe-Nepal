@@ -11,13 +11,42 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-// --- CONFIG ---
-// Use your active ngrok URL here
 const SERVER_URL = "https://thunderingly-cuspidat-e-app.ngrok-free.app"; 
-const screenWidth = Dimensions.get('window').width;
+
+// --- DUMMY DATA ---
+const DUMMY_REPORTS = [
+  {
+    id: "d1",
+    category: "Flood",
+    severity: "High",
+    location: "Balkhu, Kathmandu",
+    description: "Water levels are rising rapidly near the river bank. Residents are advised to stay alert.",
+    photo: "https://images.unsplash.com/photo-1547619292-8816ee7cdd50?q=80&w=1000&auto=format&fit=crop", // Example flood image
+    timestamp: new Date().toISOString(),
+  },
+  {
+    id: "d2",
+    category: "Landslide",
+    severity: "Moderate",
+    location: "Mugling Highway",
+    description: "Minor landslide blocking one lane. Traffic is moving slowly.",
+    photo: "https://images.unsplash.com/photo-1578351649107-1063b1aa864c?q=80&w=1000&auto=format&fit=crop", // Example landslide image
+    timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+  },
+  {
+    id: "d3",
+    category: "Earthquake",
+    severity: "Normal",
+    location: "Pokhara, Nepal",
+    description: "Minor tremors felt. No damage reported so far.",
+    photo: null, // Test how it looks without a photo
+    timestamp: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+  }
+];
 
 export default function PastReportsScreen() {
-  const [reports, setReports] = useState([]);
+  // Initialize with Dummy Data so the screen isn't empty
+  const [reports, setReports] = useState(DUMMY_REPORTS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -29,20 +58,19 @@ export default function PastReportsScreen() {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          // CRITICAL: This bypasses the ngrok warning page that causes fetch errors
           'ngrok-skip-browser-warning': 'true' 
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        // If server has data, combine it with dummy data or replace it
+        // To show ONLY server data, use: setReports(data.reverse());
+        setReports([...data.reverse(), ...DUMMY_REPORTS]);
       }
-
-      const data = await response.json();
-      // Reverse to show newest reports first
-      setReports(data.reverse());
     } catch (error) {
       console.error("Error fetching reports:", error);
+      // Keep showing dummy data even if fetch fails
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -57,9 +85,10 @@ export default function PastReportsScreen() {
     <View style={styles.reportCard}>
       <View style={styles.cardHeader}>
         <Text style={styles.categoryText}>{item.category || "General"}</Text>
-        <div style={[styles.statusBadge, item.severity === 'High' ? styles.bgRed : styles.bgBlue]}>
+        {/* FIXED: Changed <div> to <View> */}
+        <View style={[styles.statusBadge, item.severity === 'High' ? styles.bgRed : styles.bgBlue]}>
           <Text style={styles.statusText}>{item.severity || "Normal"}</Text>
-        </div>
+        </View>
       </View>
       
       <Text style={styles.locationText}>
@@ -68,7 +97,6 @@ export default function PastReportsScreen() {
       
       <Text style={styles.descriptionText}>{item.description}</Text>
       
-      {/* --- IMAGE RENDERING --- */}
       {item.photo && (
         <Image 
           source={{ uri: item.photo }} 
@@ -85,12 +113,12 @@ export default function PastReportsScreen() {
 
   return (
     <View style={styles.container}>
-      {loading ? (
+      {loading && reports.length === 0 ? (
         <ActivityIndicator size="large" color="#2196F3" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={reports}
-          keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
+          keyExtractor={(item) => item.id.toString()}
           renderItem={renderReportItem}
           contentContainerStyle={styles.listContent}
           refreshControl={
