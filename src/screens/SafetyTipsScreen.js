@@ -11,56 +11,49 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, Feather, FontAwesome5 } from "@expo/vector-icons";
 
-// --- FULL SAFETY DATA (30 REAL-WORLD TIPS) ---
+// --- UPDATED DATA (Added First Aid) ---
 const SAFETY_DATA = {
   Flood: {
     Before: [
-      { title: "Pack SOS Bag", desc: "Include 3 liters of water per person, dry food (Noodles,Biscuits ), a whistle, and vital documents in a waterproof bag.", icon: "briefcase-outline", lib: "Ionicons", color: "#ffa500" },
-      { title: "Map High Ground", desc: "Identify the nearest sturdy concrete building or safe hill. Practice the fastest route with your family.", icon: "map-outline", lib: "Ionicons", color: "#2ed573" },
-      { title: "Seal & Elevate", desc: "Move electronics, grains, and citizenship papers to upper floors or high shelves to prevent damage.", icon: "home-outline", lib: "Ionicons", color: "#1e90ff" },
-      { title: "Clear Drains", desc: "Ensure local gutters and drainage pipes near your home are clear of trash to prevent water from backing up.", icon: "trash-2", lib: "Feather", color: "#95a5a6" },
-      { title: "Unplug Power", desc: "If flooding is likely, unplug all electrical appliances to prevent short circuits and fire hazards.", icon: "power", lib: "Feather", color: "#f1c40f" },
+      { title: "Pack SOS Bag", desc: "Include 3 liters of water per person, dry food (Noodles, Biscuits), a whistle, and vital documents.", icon: "briefcase-outline", lib: "Ionicons", color: "#ffa500" },
+      { title: "Map High Ground", desc: "Identify the nearest sturdy concrete building or safe hill. Practice the route with family.", icon: "map-outline", lib: "Ionicons", color: "#2ed573" },
     ],
     During: [
-      { title: "Move Immediately", desc: "If you hear a flood warning or see water rising, move to higher ground. Do not wait for an official order.", icon: "trending-up", lib: "Feather", color: "#ff4757" },
-      { title: "Turn Around, Don't Drown", desc: "Never walk or drive through floodwater. 6 inches can knock you down; 2 feet can sweep a car away.", icon: "car-outline", lib: "Ionicons", color: "#ff4757" },
-      { title: "Avoid Bridges", desc: "Fast-moving water can weaken foundations. Stay away from bridges over fast-flowing, muddy rivers.", icon: "alert-triangle", lib: "Feather", color: "#e67e22" },
-      { title: "Avoid Electricity", desc: "Do not touch electrical equipment if you are wet or in water. Stay far from fallen power lines.", icon: "zap", lib: "Feather", color: "#ff4757" },
-      { title: "Use a Stick", desc: "If you must walk in water, use a stick to check the ground's firmness and depth in front of you.", icon: "walk", lib: "MaterialCommunityIcons", color: "#ff4757" },
+      { title: "Move Immediately", desc: "If you hear a flood warning, move to higher ground. Do not wait for official orders.", icon: "trending-up", lib: "Feather", color: "#ff4757" },
+      { title: "Turn Around", desc: "Never walk or drive through floodwater. 6 inches can knock you down.", icon: "car-outline", lib: "Ionicons", color: "#ff4757" },
     ],
     After: [
-      { title: "Boil All Water", desc: "Floodwater contaminates taps. Boil water for 3 minutes before drinking to avoid cholera/typhoid.", icon: "water-outline", lib: "Ionicons", color: "#2ed573" },
-      { title: "Check for Snakes", desc: "Snakes seek dry shelter in homes after floods. Use a stick to check under furniture and debris.", icon: "bug-outline", lib: "Ionicons", color: "#e67e22" },
-      { title: "Wait for All-Clear", desc: "Only return home after authorities confirm it is safe. Check for structural damage before entering.", icon: "checkmark-circle-outline", lib: "Ionicons", color: "#2ed573" },
-      { title: "Discard Soaked Food", desc: "Throw away any food (even cans) that touched floodwater, as it likely contains harmful bacteria.", icon: "close-circle-outline", lib: "Ionicons", color: "#ff4757" },
-      { title: "Wear Protective Gear", desc: "When cleaning, wear boots and gloves. Flood mud contains sharp glass, nails, and chemicals.", icon: "shield-checkmark-outline", lib: "Ionicons", color: "#3498db" },
+      { title: "Boil All Water", desc: "Floodwater contaminates taps. Boil for 3 minutes before drinking to avoid cholera.", icon: "water-outline", lib: "Ionicons", color: "#2ed573" },
     ],
   },
   Landslide: {
     Before: [
-      { title: "Watch for Soil Cracks", desc: "Look for new cracks in the ground, tilted trees, or poles. These are early landslide warning signs.", icon: "alert-triangle-outline", lib: "Ionicons", color: "#ffa500" },
-      { title: "Monitor Water Flow", desc: "A sudden increase/decrease in stream flow or water turning muddy indicates a slide upstream.", icon: "water", lib: "Feather", color: "#1e90ff" },
-      { title: "Improve Drainage", desc: "Direct rain runoff away from steep slopes near your house. Soggy soil is much more likely to slide.", icon: "umbrella-outline", lib: "Ionicons", color: "#2ed573" },
-      { title: "Sign Up for Alerts", desc: "Keep your phone on and ensure you can hear emergency notifications even while sleeping.", icon: "notifications-outline", lib: "Ionicons", color: "#1e90ff" },
-      { title: "Plan Your Escape", desc: "Identify safe zones away from slopes. Plan to run sideways (perpendicular), not downhill.", icon: "map-outline", lib: "Ionicons", color: "#2ed573" },
+      { title: "Watch Soil Cracks", desc: "Look for new cracks in the ground or tilted trees. These are early warning signs.", icon: "alert-triangle-outline", lib: "Ionicons", color: "#ffa500" },
     ],
     During: [
-      { title: "Listen for Rumbling", desc: "Listen for trees cracking or boulders knocking—this is the sound of an approaching landslide.", icon: "volume-high-outline", lib: "Ionicons", color: "#ff4757" },
-      { title: "Run Perpendicular", desc: "If a slide starts, run to the nearest stable ground sideways to the path of the flow.", icon: "run", lib: "MaterialCommunityIcons", color: "#ff4757" },
-      { title: "Curl and Protect", desc: "If you cannot escape, curl into a tight ball and cover your head with your arms to protect against debris.", icon: "human-handsup", lib: "MaterialCommunityIcons", color: "#ff4757" },
-      { title: "Stay Awake & Alert", desc: "Deaths often happen during sleep. Have family take turns staying 'on watch' during heavy monsoon storms.", icon: "eye-outline", lib: "Ionicons", color: "#ff4757" },
-      { title: "Avoid Valleys", desc: "Stay away from river valleys; slides can block rivers and cause sudden, massive flash floods.", icon: "landscape-outline", lib: "Ionicons", color: "#ff4757" },
+      { title: "Run Perpendicular", desc: "If a slide starts, run sideways to the path of flow, not downhill.", icon: "run", lib: "MaterialCommunityIcons", color: "#ff4757" },
     ],
     After: [
-      { title: "Stay Away from Site", desc: "Secondary slides often follow the first. Stay away until experts confirm the slope is stable.", icon: "alert-octagon", lib: "Feather", color: "#ff4757" },
-      { title: "Check for Gas/Leaks", desc: "Slides break underground pipes. Check for gas smells and report broken utility lines immediately.", icon: "flash-outline", lib: "Ionicons", color: "#e67e22" },
-      { title: "Report Road Blocks", desc: "Inform local police or the Ward Office about blockages so rescue teams can reach your area.", icon: "megaphone-outline", lib: "Ionicons", color: "#3498db" },
-      { title: "Examine Foundation", desc: "Check your home for new cracks or tilting. If the ground shifted, the building may be unsafe.", icon: "business-outline", lib: "Ionicons", color: "#2ed573" },
-      { title: "Help Neighbors Safely", desc: "Assist trapped people if safe, but don't enter unstable zones. Direct professional rescuers to them.", icon: "people-outline", lib: "Ionicons", color: "#2ed573" },
+      { title: "Examine Foundation", desc: "Check your home for new cracks. If the ground shifted, the building may be unsafe.", icon: "business-outline", lib: "Ionicons", color: "#2ed573" },
     ],
   },
+  // --- NEW: FIRST AID DATA ---
+  "First Aid": {
+    "Trauma & Injuries": [
+      { title: "Severe Bleeding", desc: "Apply firm, direct pressure to the wound with a clean cloth. Elevate the limb above heart level.", icon: "opacity", lib: "MaterialIcons", color: "#ff4757" },
+      { title: "Fractures", desc: "Do not try to straighten a broken bone. Splint the limb using a sturdy stick and cloth to prevent movement.", icon: "bone", lib: "FontAwesome5", color: "#ffa500" },
+      { title: "Head Injury", desc: "Keep the person still. If they are drowsy or vomiting, seek immediate medical help (102).", icon: "head-side-mask", lib: "FontAwesome5", color: "#ff4757" },
+    ],
+    "Environment": [
+      { title: "Hypothermia", desc: "Remove wet clothes. Wrap the person in dry blankets or extra layers. Give warm (not hot) liquids.", icon: "thermometer-minus", lib: "MaterialCommunityIcons", color: "#1e90ff" },
+      { title: "Snake Bite", desc: "Keep the bitten area still and below heart level. Do not cut the wound or try to suck out venom.", icon: "snake", lib: "MaterialCommunityIcons", color: "#ff4757" },
+    ],
+    "Rescue Breathing": [
+      { title: "Drowning / CPR", desc: "If the person isn't breathing, start chest compressions (100-120 per minute) in the center of the chest.", icon: "heart-pulse", lib: "MaterialCommunityIcons", color: "#ff4757" },
+    ],
+  }
 };
 
 const NavItem = memo(({ icon, label, active, onPress }) => (
@@ -73,12 +66,12 @@ const NavItem = memo(({ icon, label, active, onPress }) => (
 export default function SafetyTipsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState("Flood");
-  const [openSection, setOpenSection] = useState("Before");
+  const [openSection, setOpenSection] = useState(activeTab === "First Aid" ? "Trauma & Injuries" : "Before");
 
   const onShare = async () => {
     try {
       await Share.share({
-        message: `Stay Safe! Here are essential ${activeTab} safety tips for before, during, and after an emergency.`,
+        message: `Emergency Guide: Check out these ${activeTab} safety and medical tips from Safe Nepal!`,
       });
     } catch (error) {
       Alert.alert("Error", error.message);
@@ -86,7 +79,9 @@ export default function SafetyTipsScreen({ navigation }) {
   };
 
   const renderIcon = (item) => {
-    const IconLib = item.lib === "MaterialCommunityIcons" ? MaterialCommunityIcons : item.lib === "Feather" ? Feather : Ionicons;
+    const IconLib = item.lib === "MaterialCommunityIcons" ? MaterialCommunityIcons : 
+                    item.lib === "Feather" ? Feather : 
+                    item.lib === "FontAwesome5" ? FontAwesome5 : Ionicons;
     return <IconLib name={item.icon} size={22} color={item.color} />;
   };
 
@@ -102,7 +97,7 @@ export default function SafetyTipsScreen({ navigation }) {
           activeOpacity={0.8}
         >
           <View style={styles.headerLeft}>
-             <View style={[styles.dot, { backgroundColor: sectionName === "During" ? "#ff4757" : "#2ed573" }]} />
+             <View style={[styles.dot, { backgroundColor: sectionName === "During" || sectionName === "Rescue Breathing" ? "#ff4757" : "#2ed573" }]} />
              <Text style={styles.sectionTitle}>{sectionName}</Text>
           </View>
           <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={18} color="#fff" />
@@ -131,19 +126,19 @@ export default function SafetyTipsScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Safety Awareness</Text>
+          <Text style={styles.headerTitle}>Safety & First Aid</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        {/* DISASTER TAB SELECTOR */}
+        {/* UPDATED TAB SELECTOR (3 Tabs now) */}
         <View style={styles.toggleRow}>
-          {["Flood", "Landslide"].map((tab) => (
+          {["Flood", "Landslide", "First Aid"].map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.toggleBtn, activeTab === tab && styles.activeToggle]}
               onPress={() => {
                 setActiveTab(tab);
-                setOpenSection("Before");
+                setOpenSection(tab === "First Aid" ? "Trauma & Injuries" : "Before");
               }}
             >
               <Text style={[styles.toggleText, activeTab === tab && styles.activeToggleText]}>{tab}</Text>
@@ -155,15 +150,13 @@ export default function SafetyTipsScreen({ navigation }) {
           contentContainerStyle={{ paddingBottom: 160 }}
           showsVerticalScrollIndicator={false}
         >
-          {renderAccordion("Before")}
-          {renderAccordion("During")}
-          {renderAccordion("After")}
+          {Object.keys(SAFETY_DATA[activeTab]).map(section => renderAccordion(section))}
         </ScrollView>
 
         {/* SHARE ACTION */}
         <TouchableOpacity style={[styles.shareBtn, { bottom: insets.bottom + 85 }]} onPress={onShare}>
           <Ionicons name="share-social" size={20} color="#fff" />
-          <Text style={styles.shareText}>Share Safety Tips</Text>
+          <Text style={styles.shareText}>Share Emergency Tips</Text>
         </TouchableOpacity>
 
         {/* PERSISTENT BOTTOM NAV */}
@@ -206,7 +199,7 @@ const styles = StyleSheet.create({
   },
   toggleBtn: { flex: 1, paddingVertical: 12, alignItems: "center", borderRadius: 12 },
   activeToggle: { backgroundColor: "#1e90ff" },
-  toggleText: { color: "#94a3b8", fontWeight: "600", fontSize: 15 },
+  toggleText: { color: "#94a3b8", fontWeight: "600", fontSize: 13 }, // Reduced font size to fit 3 tabs
   activeToggleText: { color: "#fff" },
   section: {
     backgroundColor: "rgba(30, 41, 59, 0.7)",

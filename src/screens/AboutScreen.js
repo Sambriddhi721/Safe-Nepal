@@ -102,7 +102,7 @@ export default function AboutScreen({ navigation }) {
               <View>
                 <Text style={[styles.devLabel, { color: theme.subText }]}>Developed by</Text>
                 <Text style={[styles.devName, { color: theme.text }]}>Sambriddhi Dawadi</Text>
-                <Text style={[styles.devId, { color: theme.accent }]}>ID: 2331203 | L5CG10</Text>
+                <Text style={[styles.devId, { color: theme.accent }]}>ID: 2331203 | L5CG3</Text>
               </View>
               <TouchableOpacity onPress={() => handleOpenLink('https://github.com/sambriddhi')}>
                 <Ionicons name="logo-github" size={32} color={theme.text} />
