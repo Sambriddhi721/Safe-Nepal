@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext } from "react";
 import { 
   View, Text, StyleSheet, TouchableOpacity, ScrollView, 
   Alert, Switch, Image, StatusBar, SafeAreaView 
@@ -8,22 +8,29 @@ import { AuthContext } from "../context/AuthContext";
 import { ThemeContext } from "../context/ThemeContext"; 
 
 export default function ProfileScreen({ navigation }) {
-  const { signOut, user, userRole } = useContext(AuthContext) || {};
-  const { isDarkMode, toggleTheme, colors } = useContext(ThemeContext);
-
-  const [isPoliceMode, setIsPoliceMode] = useState(userRole === 'POLICE' || userRole === 'ADMIN');
+  const { signOut, user, role, switchRole, isHelper } = useContext(AuthContext) || {};
+  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
 
   const handleToggleMode = () => {
-    const nextMode = !isPoliceMode;
-    setIsPoliceMode(nextMode);
+    // Check current state directly from context role
+    const isCurrentlyResponder = role === "RESPONDER";
+    const targetMode = isCurrentlyResponder ? "Citizen" : "Police";
     
     Alert.alert(
       "Mode Switch",
-      `Switching to ${nextMode ? "Responder" : "Citizen"} view.`,
-      [{ 
-        text: "Confirm", 
-        onPress: () => navigation.navigate('Home', { screenMode: nextMode ? 'POLICE' : 'CITIZEN' }) 
-      }]
+      `Switching to ${targetMode} mode.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Confirm", 
+          onPress: () => {
+            // CRITICAL: We ONLY call switchRole(). 
+            // Because AppNavigator has key={role}, it will automatically 
+            // unmount this ProfileScreen and mount the new Home screen.
+            switchRole(); 
+          } 
+        }
+      ]
     );
   };
 
@@ -49,39 +56,43 @@ export default function ProfileScreen({ navigation }) {
       <SafeAreaView style={{ flex: 1 }}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-            <Ionicons name="close" size={28} color={colors.text} />
+          <TouchableOpacity 
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate(isHelper ? 'ResponderHome' : 'UserHome')} 
+            style={styles.closeBtn}
+          >
+            <Ionicons name="close" size={28} color={isDarkMode ? '#fff' : '#000'} />
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.userInfoRow} onPress={() => navigation.navigate("AccountSettings")}>
             <Image 
-              source={{ uri: `https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=3b82f6&color=fff` }} 
+              source={{ uri: `https://ui-avatars.com/api/?name=${user?.full_name || 'User'}&background=3b82f6&color=fff` }} 
               style={styles.avatarCircle} 
             />
             <View style={styles.nameContainer}>
-              <Text style={[styles.userName, { color: colors.text }]}>{user?.name || "Sambriddhi Dawadi"}</Text>
+              <Text style={[styles.userName, { color: isDarkMode ? '#fff' : '#000' }]}>
+                {user?.full_name || "Sambriddhi Dawadi"}
+              </Text>
               <View style={styles.ratingRow}>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <FontAwesome key={s} name="star" size={12} color="#f59e0b" style={{ marginRight: 2 }} />
                 ))}
-                <Text style={[styles.ratingText, { color: colors.subText }]}>4.82 (112)</Text>
+                <Text style={[styles.ratingText, { color: '#64748b' }]}>4.82 (112)</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.subText} />
+            <Ionicons name="chevron-forward" size={20} color="#64748b" />
           </TouchableOpacity>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
           
-          {/* GENERAL SECTION */}
           <Text style={styles.sectionTitle}>GENERAL</Text>
-          <View style={[styles.card, { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }]}>
+          <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e293b' : '#ffffff' }]}>
              <View style={styles.rowItem}>
                 <View style={styles.rowLeft}>
-                    <View style={[styles.iconBox, { backgroundColor: '#1e293b' }]}>
+                    <View style={[styles.iconBox, { backgroundColor: isDarkMode ? '#0f172a' : '#f1f5f9' }]}>
                         <Ionicons name={isDarkMode ? "moon" : "sunny"} size={20} color="#3b82f6" />
                     </View>
-                    <Text style={[styles.rowLabel, { color: colors.text }]}>Dark Mode</Text>
+                    <Text style={[styles.rowLabel, { color: isDarkMode ? '#fff' : '#000' }]}>Dark Mode</Text>
                 </View>
                 <Switch 
                   value={isDarkMode} 
@@ -91,29 +102,25 @@ export default function ProfileScreen({ navigation }) {
              </View>
           </View>
 
-          {/* PREFERENCES SECTION */}
           <Text style={styles.sectionTitle}>PREFERENCES & SECURITY</Text>
-          <View style={[styles.card, { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }]}>
-            <MenuOption icon="notifications" label="Notification" subLabel="Alerts, Sounds" colors={colors} />
-            <MenuOption icon="shield-checkmark" label="Privacy" subLabel="Location, Data Sharing" colors={colors} />
-            <MenuOption icon="lock-closed" label="Security" subLabel="Two-Factor, Login Activity" colors={colors} />
-            <MenuOption icon="person" label="Account" subLabel="Linked Accounts, Export" colors={colors} borderNone />
+          <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e293b' : '#ffffff' }]}>
+            <MenuOption isDarkMode={isDarkMode} icon="notifications" label="Notification" subLabel="Alerts, Sounds" />
+            <MenuOption isDarkMode={isDarkMode} icon="shield-checkmark" label="Privacy" subLabel="Location, Data Sharing" />
+            <MenuOption isDarkMode={isDarkMode} icon="lock-closed" label="Security" subLabel="Two-Factor, Login Activity" />
+            <MenuOption isDarkMode={isDarkMode} icon="person" label="Account" subLabel="Linked Accounts, Export" borderNone />
           </View>
 
-          {/* SUPPORT SECTION */}
           <Text style={styles.sectionTitle}>SUPPORT</Text>
-          <View style={[styles.card, { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }]}>
-            <MenuOption icon="help-circle" label="Help & FAQ" subLabel="Support Center" colors={colors} />
-            <MenuOption icon="information-circle" label="About" subLabel="App Version 1.3.6" colors={colors} borderNone onPress={() => navigation.navigate("About")} />
+          <View style={[styles.card, { backgroundColor: isDarkMode ? '#1e293b' : '#ffffff' }]}>
+            <MenuOption isDarkMode={isDarkMode} icon="help-circle" label="Help & FAQ" subLabel="Support Center" />
+            <MenuOption isDarkMode={isDarkMode} icon="information-circle" label="About" subLabel="App Version 1.3.6" borderNone onPress={() => navigation.navigate("About")} />
           </View>
 
-          {/* LOGOUT BUTTON */}
-          <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }]} onPress={handleLogout}>
+          <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: isDarkMode ? '#1e293b' : '#ffffff' }]} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={22} color="#ef4444" style={{ marginRight: 10 }} />
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
 
-          {/* SOCIALS & VERSION */}
           <View style={styles.footerContainer}>
              <View style={styles.socialRow}>
                 <TouchableOpacity style={[styles.socialIcon, { backgroundColor: '#3b82f6' }]}>
@@ -123,19 +130,20 @@ export default function ProfileScreen({ navigation }) {
                   <Ionicons name="logo-instagram" size={24} color="#fff" />
                 </TouchableOpacity>
              </View>
-             <Text style={[styles.versionText, { color: colors.subText }]}>v1.3.6 • Safe Nepal</Text>
+             <Text style={[styles.versionText, { color: '#64748b' }]}>v1.3.6 • Safe Nepal</Text>
           </View>
         </ScrollView>
 
-        {/* STICKY POLICE MODE BUTTON */}
+        {/* STICKY ROLE SWITCH BUTTON */}
         <View style={[styles.bottomButtonContainer, { backgroundColor: isDarkMode ? '#020617' : '#f5f5f5' }]}>
             <TouchableOpacity 
-                style={styles.policeModeBtn} 
+                style={styles.roleModeBtn} 
                 onPress={handleToggleMode} 
                 activeOpacity={0.8}
             >
-                <Text style={styles.policeModeText}>
-                    {isPoliceMode ? "Citizen mode" : "Police mode"}
+                <Text style={styles.roleModeText}>
+                    {/* The text follows isHelper state from context */}
+                    {isHelper ? "Switch to Citizen mode" : "Switch to Police mode"}
                 </Text>
             </TouchableOpacity>
         </View>
@@ -144,18 +152,19 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
-function MenuOption({ icon, label, subLabel, colors, borderNone, onPress }) {
+// MenuOption component helper
+function MenuOption({ icon, label, subLabel, borderNone, onPress, isDarkMode }) {
   return (
     <TouchableOpacity 
-        style={[styles.menuRow, !borderNone && { borderBottomWidth: 0.5, borderBottomColor: '#1e293b' }]} 
+        style={[styles.menuRow, !borderNone && { borderBottomWidth: 0.5, borderBottomColor: isDarkMode ? '#334155' : '#e2e8f0' }]} 
         onPress={onPress}
     >
       <View style={styles.rowLeft}>
-        <View style={[styles.iconBox, { backgroundColor: '#1e293b' }]}>
+        <View style={[styles.iconBox, { backgroundColor: isDarkMode ? '#0f172a' : '#f1f5f9' }]}>
             <Ionicons name={icon} size={20} color="#3b82f6" />
         </View>
         <View>
-            <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+            <Text style={[styles.rowLabel, { color: isDarkMode ? '#fff' : '#000' }]}>{label}</Text>
             {subLabel && <Text style={styles.subLabelText}>{subLabel}</Text>}
         </View>
       </View>
@@ -189,8 +198,8 @@ const styles = StyleSheet.create({
   socialIcon: { width: 45, height: 45, borderRadius: 22.5, justifyContent: 'center', alignItems: 'center', marginHorizontal: 10 },
   versionText: { fontSize: 12, opacity: 0.5 },
   bottomButtonContainer: { position: 'absolute', bottom: 0, width: '100%', paddingHorizontal: 20, paddingBottom: 25, paddingTop: 10 },
-  policeModeBtn: { 
-    backgroundColor: '#c4ff37', // Neon Green like inDriver
+  roleModeBtn: { 
+    backgroundColor: '#c4ff37', 
     height: 60, 
     borderRadius: 20, 
     alignItems: 'center', 
@@ -201,5 +210,5 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 8 
   },
-  policeModeText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
+  roleModeText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
 });

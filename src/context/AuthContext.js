@@ -1,38 +1,45 @@
-import React, { createContext, useState, useMemo } from "react";
+import React, { createContext, useState, useMemo, useCallback } from "react";
 
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // We start with a DEFAULT user so you don't have to log in manually every time
+  // Start in "USER" mode for Citizen Home
   const [user, setUser] = useState({
-    id: "dev-123",
-    full_name: "Developer Admin",
+    id: "2331203", 
+    full_name: "Sambriddhi Dawadi",
     role: "USER", 
   });
+  
   const [token, setToken] = useState("fake-dev-token");
-  const [loading, setLoading] = useState(false);
 
-  const signIn = async (userData, jwtToken) => {
-    setUser(userData);
-    setToken(jwtToken);
-  };
+  const switchRole = useCallback(() => {
+    setUser((prev) => {
+      // If user is null (logged out), don't try to switch
+      if (!prev) return prev;
 
-  const signOut = async () => {
-    console.log("Auth: Clearing session...");
-    setUser(null);
+      const newRole = prev.role === "RESPONDER" ? "USER" : "RESPONDER";
+      return {
+        ...prev,
+        role: newRole,
+      };
+    });
+  }, []);
+
+  const signOut = useCallback(() => {
     setToken(null);
-  };
+    setUser(null);
+  }, []);
 
+  // Memoizing these values ensures components only re-render when necessary
   const authValue = useMemo(() => ({
     user,
     token,
-    loading,
-    signIn,
+    switchRole,
     signOut,
-    isAuthenticated: !!token, 
-    role: user?.role || "GUEST",
-    isHelper: true, // Forced to true so you can test the Responder Portal
-  }), [user, token, loading]);
+    isAuthenticated: !!token,
+    role: user?.role || "USER", // Default to USER if object is empty
+    isHelper: user?.role === "RESPONDER",
+  }), [user, token, switchRole, signOut]);
 
   return (
     <AuthContext.Provider value={authValue}>

@@ -3,7 +3,7 @@ import { StatusBar, ActivityIndicator, View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// --- Context & Providers (FIXED PATHS) ---
+// --- Context & Providers ---
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext'; 
 import { AuthProvider, AuthContext } from './src/context/AuthContext'; 
 
@@ -21,13 +21,14 @@ import PredictionAnalyticsScreen from './src/screens/PredictionAnalyticsScreen';
 import ReliefCenterScreen from './src/screens/ReliefCenterScreen';
 import EmergencyContactsScreen from './src/screens/EmergencyContactsScreen';
 import SafetyTipsScreen from './src/screens/SafetyTipsScreen';
-import ProfileScreen from './src/screens/ProfileScreen'; // This now acts as Settings too
+import ProfileScreen from './src/screens/ProfileScreen'; 
 import AboutScreen from './src/screens/AboutScreen';
 import AddContactScreen from './src/screens/AddContactScreen'; 
 import FirstAidScreen from './src/screens/VolunteerScreen'; 
 
-// --- Responder Specific Screens ---
-import HelperDashboardScreen from './src/screens/HelperDashboardScreen';
+// --- Responder Specific Screens (UPDATED) ---
+// Make sure this points to your new ResponderDashboard.js file
+import ResponderDashboard from './src/screens/ResponderDashboard'; 
 import SOSListScreen from './src/screens/SOSListScreen';
 
 // --- Settings Sub-Screens ---
@@ -40,7 +41,8 @@ const Stack = createNativeStackNavigator();
 
 function AppNavigator() {
   const { theme } = useContext(ThemeContext);
-  const { token, loading } = useContext(AuthContext); 
+  // Added 'role' here to control the view
+  const { token, loading, role } = useContext(AuthContext); 
   
   const isDarkMode = theme === 'dark';
 
@@ -60,7 +62,8 @@ function AppNavigator() {
       />
       
       <Stack.Navigator 
-        key={token ? 'authenticated' : 'guest'}
+        // Force a re-mount when token or role changes
+        key={`${token}-${role}`}
         screenOptions={{ 
           headerStyle: { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }, 
           headerTintColor: isDarkMode ? '#F1F5F9' : '#000000', 
@@ -74,21 +77,32 @@ function AppNavigator() {
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         ) : (
           <>
-            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+            {/* 1. DYNAMIC ENTRY POINT: Checks role to decide initial screen */}
+            {role === 'RESPONDER' ? (
+              <Stack.Screen 
+                name="ResponderHome" 
+                component={ResponderDashboard} 
+                options={{ headerShown: false }} 
+              />
+            ) : (
+              <Stack.Screen 
+                name="Home" 
+                component={HomeScreen} 
+                options={{ headerShown: false }} 
+              />
+            )}
             
+            {/* 2. SHARED SCREENS (Accessible by both roles) */}
             <Stack.Group>
                 <Stack.Screen name="NewReport" component={ReportDisasterScreen} options={{ title: 'Submit Report' }} />
                 <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My Reports' }} />
                 <Stack.Screen name="SOSScreen" component={SOSScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="FirstAidScreen" component={FirstAidScreen} options={{ title: 'Emergency First Aid' }} />
                 <Stack.Screen name="PredictionAnalyticsScreen" component={PredictionAnalyticsScreen} options={{ title: 'Risk Analysis' }} />
-            </Stack.Group>
-
-            <Stack.Group>
-                <Stack.Screen name="HelperDashboard" component={HelperDashboardScreen} options={{ title: 'Responder Hub' }} />
                 <Stack.Screen name="SOSList" component={SOSListScreen} options={{ title: 'Active SOS Alerts' }} />
             </Stack.Group>
 
+            {/* 3. UTILITY & SETTINGS GROUP */}
             <Stack.Group screenOptions={{ presentation: 'card' }}>
                 <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} options={{ title: 'Hazard Map' }} />
                 <Stack.Screen name="AlertScreen" component={AlertScreen} options={{ title: 'Disaster Alerts' }} />
@@ -98,10 +112,6 @@ function AppNavigator() {
                 <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
                 <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Safe Nepal' }} />
                 <Stack.Screen name="AddContact" component={AddContactScreen} options={{ title: 'Emergency Contacts' }} />
-            </Stack.Group>
-
-            <Stack.Group screenOptions={{ headerTitleAlign: 'center' }}>
-                <Stack.Screen name="Settings" component={ProfileScreen} options={{ headerShown: false }} /> 
                 <Stack.Screen name="AccountSettings" component={AccountSettings} options={{ title: 'Personal Info' }} />
                 <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: 'Notifications' }} />
                 <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={{ title: 'Privacy' }} />
