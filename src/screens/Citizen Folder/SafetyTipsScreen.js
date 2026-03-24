@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from "react";
+import React, { useState, useCallback, memo, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,10 +10,10 @@ import {
   StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRoute } from "@react-navigation/native"; // ✅ Added for route detection
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, MaterialCommunityIcons, Feather, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, Feather, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 
-// --- UPDATED DATA (Added First Aid) ---
 const SAFETY_DATA = {
   Flood: {
     Before: [
@@ -39,7 +39,6 @@ const SAFETY_DATA = {
       { title: "Examine Foundation", desc: "Check your home for new cracks. If the ground shifted, the building may be unsafe.", icon: "business-outline", lib: "Ionicons", color: "#2ed573" },
     ],
   },
-  // --- NEW: FIRST AID DATA ---
   "First Aid": {
     "Trauma & Injuries": [
       { title: "Severe Bleeding", desc: "Apply firm, direct pressure to the wound with a clean cloth. Elevate the limb above heart level.", icon: "opacity", lib: "MaterialIcons", color: "#ff4757" },
@@ -65,8 +64,17 @@ const NavItem = memo(({ icon, label, active, onPress }) => (
 
 export default function SafetyTipsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const route = useRoute(); // ✅ Detect how we arrived here
   const [activeTab, setActiveTab] = useState("Flood");
-  const [openSection, setOpenSection] = useState(activeTab === "First Aid" ? "Trauma & Injuries" : "Before");
+  const [openSection, setOpenSection] = useState("Before");
+
+  // ✅ Auto-switch to First Aid if navigated from FirstAidScreen alias
+  useEffect(() => {
+    if (route.name === "FirstAidScreen") {
+      setActiveTab("First Aid");
+      setOpenSection("Trauma & Injuries");
+    }
+  }, [route.name]);
 
   const onShare = async () => {
     try {
@@ -81,7 +89,8 @@ export default function SafetyTipsScreen({ navigation }) {
   const renderIcon = (item) => {
     const IconLib = item.lib === "MaterialCommunityIcons" ? MaterialCommunityIcons : 
                     item.lib === "Feather" ? Feather : 
-                    item.lib === "FontAwesome5" ? FontAwesome5 : Ionicons;
+                    item.lib === "FontAwesome5" ? FontAwesome5 : 
+                    item.lib === "MaterialIcons" ? MaterialIcons : Ionicons;
     return <IconLib name={item.icon} size={22} color={item.color} />;
   };
 
@@ -90,7 +99,7 @@ export default function SafetyTipsScreen({ navigation }) {
     const items = SAFETY_DATA[activeTab][sectionName] || [];
 
     return (
-      <View style={styles.section}>
+      <View key={`${activeTab}-${sectionName}`} style={styles.section}>
         <TouchableOpacity
           style={styles.sectionHeader}
           onPress={() => setOpenSection(isOpen ? "" : sectionName)}
@@ -104,7 +113,7 @@ export default function SafetyTipsScreen({ navigation }) {
         </TouchableOpacity>
 
         {isOpen && items.map((item, index) => (
-          <View key={index} style={styles.tipCard}>
+          <View key={`${sectionName}-tip-${index}`} style={styles.tipCard}>
             <View style={styles.iconContainer}>{renderIcon(item)}</View>
             <View style={styles.tipTextBox}>
               <Text style={styles.tipTitle}>{item.title}</Text>
@@ -130,11 +139,11 @@ export default function SafetyTipsScreen({ navigation }) {
           <View style={{ width: 40 }} />
         </View>
 
-        {/* UPDATED TAB SELECTOR (3 Tabs now) */}
+        {/* TAB SELECTOR */}
         <View style={styles.toggleRow}>
           {["Flood", "Landslide", "First Aid"].map((tab) => (
             <TouchableOpacity
-              key={tab}
+              key={`tab-${tab}`}
               style={[styles.toggleBtn, activeTab === tab && styles.activeToggle]}
               onPress={() => {
                 setActiveTab(tab);
@@ -156,7 +165,7 @@ export default function SafetyTipsScreen({ navigation }) {
         {/* SHARE ACTION */}
         <TouchableOpacity style={[styles.shareBtn, { bottom: insets.bottom + 85 }]} onPress={onShare}>
           <Ionicons name="share-social" size={20} color="#fff" />
-          <Text style={styles.shareText}>Share Emergency Tips</Text>
+          <Text style={styles.shareText}>Share Tips</Text>
         </TouchableOpacity>
 
         {/* PERSISTENT BOTTOM NAV */}
@@ -199,7 +208,7 @@ const styles = StyleSheet.create({
   },
   toggleBtn: { flex: 1, paddingVertical: 12, alignItems: "center", borderRadius: 12 },
   activeToggle: { backgroundColor: "#1e90ff" },
-  toggleText: { color: "#94a3b8", fontWeight: "600", fontSize: 13 }, // Reduced font size to fit 3 tabs
+  toggleText: { color: "#94a3b8", fontWeight: "600", fontSize: 13 },
   activeToggleText: { color: "#fff" },
   section: {
     backgroundColor: "rgba(30, 41, 59, 0.7)",

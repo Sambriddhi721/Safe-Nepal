@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 // ImagePicker import removed to fix native module error
-import { ThemeContext } from '../context/ThemeContext';
-import { AuthContext } from '../context/AuthContext'; 
+import { ThemeContext } from '../../context/ThemeContext';
+import { AuthContext } from '../../context/AuthContext'; 
 
 export default function AccountSettings({ navigation }) {
   const { colors } = useContext(ThemeContext);

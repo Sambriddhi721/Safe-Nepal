@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, StyleSheet, Button, Text, Alert } from 'react-native';
 // --- UPDATED IMPORT FOR EXPO ---
-import { saveNote } from '../services/dbService'; 
+import { saveNote } from '../../services/dbService';
 
 const AddContactScreen = ({ navigation }) => {
   const [name, setName] = useState('');

@@ -2,7 +2,7 @@ import React, { useState, useContext } from "react";
 import { 
   View, 
   Text, 
-  StyleSheet, // Ensure this is imported to fix the ReferenceError
+  StyleSheet, 
   TextInput, 
   TouchableOpacity, 
   Alert, 
@@ -11,29 +11,48 @@ import {
 } from "react-native";
 import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
-import { AuthContext } from "../context/AuthContext";
+
+// FIX: Added double dots (../../) to go up two levels 
+// from "Shared Folder" -> "screens" -> "src"
+import { AuthContext } from "../../context/AuthContext";
+import { API_BASE } from "../../config";
+
 import { MaterialCommunityIcons, FontAwesome, AntDesign } from "@expo/vector-icons";
-import { API_BASE } from "../config";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Destructure signIn from your AuthContext
   const { signIn } = useContext(AuthContext);
 
   const handleLogin = async () => {
-    if (!email || !password) return Alert.alert("Error", "Please fill all fields");
+    if (!email || !password) {
+      return Alert.alert("Error", "Please fill all fields");
+    }
     
     setLoading(true);
     try {
+      // API Call
       const res = await axios.post(`${API_BASE}/api/auth/login`, {
         email: email.trim().toLowerCase(),
         password
       });
-      await signIn(res.data.user, res.data.access_token);
+
+      // res.data should contain user object (with role) and token
+      if (res.data.access_token) {
+        await signIn(res.data.user, res.data.access_token);
+        // Navigation is usually handled automatically by the 
+        // Logic in AppNavigator.js when the token/role state changes.
+      }
     } catch (err) {
-      Alert.alert("Login Failed", err?.response?.data?.message || "Check your network connection");
+      console.log("Login Error:", err);
+      Alert.alert(
+        "Login Failed", 
+        err?.response?.data?.message || "Check your network connection"
+      );
     } finally {
       setLoading(false);
     }
@@ -41,12 +60,12 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <LinearGradient colors={["#0f2027", "#203a43", "#2c5364"]} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        keyboardShouldPersistTaps="handled"
+      >
         
-        {/* Main Card Container */}
         <View style={styles.card}>
-          
-          {/* Bell Icon Header */}
           <View style={styles.iconContainer}>
             <View style={styles.iconCircle}>
               <FontAwesome name="bell" size={30} color="#FFD700" />
@@ -56,17 +75,20 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.headerTitle}>Stay Safe, Stay Informed.</Text>
           <Text style={styles.headerSubtitle}>Log in to get real-time alerts.</Text>
 
-          {/* LogIn/SignUp Toggle Tab */}
+          {/* Toggle Tab */}
           <View style={styles.tabContainer}>
             <TouchableOpacity style={[styles.tab, styles.activeTab]}>
               <Text style={styles.activeTabText}>Log In</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate("Signup")}>
+            <TouchableOpacity 
+              style={styles.tab} 
+              onPress={() => navigation.navigate("Signup")}
+            >
               <Text style={styles.tabText}>Sign Up</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Inputs */}
+          {/* Email Input */}
           <Text style={styles.inputLabel}>Email Address</Text>
           <View style={styles.inputBox}>
             <TextInput 
@@ -76,9 +98,11 @@ export default function LoginScreen({ navigation }) {
               value={email} 
               onChangeText={setEmail}
               autoCapitalize="none"
+              keyboardType="email-address"
             />
           </View>
 
+          {/* Password Input */}
           <Text style={styles.inputLabel}>Password</Text>
           <View style={styles.inputBox}>
             <TextInput 
@@ -98,31 +122,40 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Login Button */}
-          <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
-            {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>Log In</Text>}
+          {/* Login Action */}
+          <TouchableOpacity 
+            style={styles.loginBtn} 
+            onPress={handleLogin} 
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.loginBtnText}>Log In</Text>
+            )}
           </TouchableOpacity>
 
-          {/* Social Divider */}
           <View style={styles.dividerContainer}>
             <View style={styles.line} />
             <Text style={styles.dividerText}>Or continue with</Text>
             <View style={styles.line} />
           </View>
 
-          {/* Social Buttons */}
           <View style={styles.socialRow}>
             <TouchableOpacity style={styles.socialBtn}>
               <AntDesign name="google" size={20} color="#EA4335" />
               <Text style={styles.socialBtnText}>Google</Text>
             </TouchableOpacity>
           </View>
-
         </View>
 
-        {/* Footer Link */}
-        <TouchableOpacity style={styles.footer} onPress={() => navigation.navigate("Signup")}>
-          <Text style={styles.footerText}>Don't have an account? <Text style={styles.signUpLink}>Sign Up</Text></Text>
+        <TouchableOpacity 
+          style={styles.footer} 
+          onPress={() => navigation.navigate("Signup")}
+        >
+          <Text style={styles.footerText}>
+            Don't have an account? <Text style={styles.signUpLink}>Sign Up</Text>
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </LinearGradient>

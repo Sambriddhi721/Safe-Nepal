@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LineChart } from "react-native-chart-kit";
 
 const screenWidth = Dimensions.get("window").width;
-import { API_BASE } from "../config";
+import { API_BASE } from "../../config";
 
 export default function PredictionAnalyticsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("Flood"); // Set Flood as default since you have the model

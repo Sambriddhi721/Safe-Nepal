@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, 
 import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
-import { AuthContext } from "../context/AuthContext";
-import { API_BASE } from "../config";
+import { AuthContext } from "../../context/AuthContext";
+import { API_BASE } from "../../config";
 
 export default function SOSListScreen() {
   const { token } = useContext(AuthContext);

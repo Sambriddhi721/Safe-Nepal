@@ -2,8 +2,8 @@ import React, { useContext, useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";
-import { AuthContext } from "../context/AuthContext";
-import { API_BASE } from "../config";
+import { AuthContext } from "../../context/AuthContext";
+import { API_BASE } from "../../config";
 
 // Ensure this matches your backend IP
 

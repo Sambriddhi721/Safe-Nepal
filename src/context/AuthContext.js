@@ -3,24 +3,26 @@ import React, { createContext, useState, useMemo, useCallback } from "react";
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // Start in "USER" mode for Citizen Home
+  // Mocking the initial state
   const [user, setUser] = useState({
     id: "2331203", 
     full_name: "Sambriddhi Dawadi",
-    role: "USER", 
+    role: "USER", // "USER" (Citizen) or "RESPONDER" (Police)
   });
   
   const [token, setToken] = useState("fake-dev-token");
+  const [loading, setLoading] = useState(false); // Added loading for AppNavigator sanity
 
   const switchRole = useCallback(() => {
     setUser((prev) => {
-      // If user is null (logged out), don't try to switch
       if (!prev) return prev;
-
       const newRole = prev.role === "RESPONDER" ? "USER" : "RESPONDER";
-      return {
-        ...prev,
-        role: newRole,
+      
+      console.log(`🛡️ Switching role to: ${newRole}`);
+      
+      return { 
+        ...prev, 
+        role: newRole 
       };
     });
   }, []);
@@ -30,16 +32,16 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
-  // Memoizing these values ensures components only re-render when necessary
+  // Prepare the value for the provider
   const authValue = useMemo(() => ({
     user,
     token,
+    loading,
     switchRole,
     signOut,
-    isAuthenticated: !!token,
-    role: user?.role || "USER", // Default to USER if object is empty
+    role: user?.role || "USER", 
     isHelper: user?.role === "RESPONDER",
-  }), [user, token, switchRole, signOut]);
+  }), [user, token, loading, switchRole, signOut]);
 
   return (
     <AuthContext.Provider value={authValue}>

@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Dimensions, 
   ScrollView, Animated, StatusBar, ActivityIndicator 
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native"; // Added this
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { 
   Ionicons, 
@@ -11,8 +11,10 @@ import {
   FontAwesome5, 
   MaterialCommunityIcons 
 } from "@expo/vector-icons";
-import { ThemeContext } from "../context/ThemeContext"; 
-import { AuthContext } from "../context/AuthContext"; 
+
+// Context Providers
+import { ThemeContext } from "../../context/ThemeContext"; 
+import { AuthContext } from "../../context/AuthContext"; 
 
 const { width } = Dimensions.get("window");
 
@@ -32,7 +34,6 @@ export default function HomeScreen({ navigation, route }) {
   const { theme, colors } = useContext(ThemeContext);
   const { userRole } = useContext(AuthContext); 
   
-  // Initialize with the role from Auth or the param
   const [userMode, setUserMode] = useState(route.params?.screenMode || userRole || 'CITIZEN'); 
 
   const blinkAnim = useRef(new Animated.Value(0.3)).current;
@@ -43,7 +44,6 @@ export default function HomeScreen({ navigation, route }) {
     condition: "Loading..." 
   });
 
-  // FIXED: listen for focus events to catch the mode change from Profile screen
   useFocusEffect(
     useCallback(() => {
       if (route.params?.screenMode) {
@@ -74,15 +74,12 @@ export default function HomeScreen({ navigation, route }) {
     };
     fetchWeather();
 
-    const startBlinking = () => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(blinkAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-          Animated.timing(blinkAnim, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
-        ])
-      ).start();
-    };
-    startBlinking();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
   }, [blinkAnim]);
 
   return (
@@ -91,15 +88,16 @@ export default function HomeScreen({ navigation, route }) {
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} />
         
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
+          {/* HEADER */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
                <Ionicons 
-                  name={userMode === 'POLICE' ? "shield-half" : "shield-checkmark"} 
+                  name={userMode === 'RESPONDER' ? "shield-half" : "shield-checkmark"} 
                   size={26} 
-                  color={userMode === 'POLICE' ? "#3b82f6" : colors.text} 
+                  color={userMode === 'RESPONDER' ? "#3b82f6" : colors.text} 
                />
                <Text style={[styles.navTitle, { color: colors.text }]}>
-                  {userMode === 'POLICE' ? "Responder" : "Safe Nepal"}
+                  {userMode === 'RESPONDER' ? "Responder" : "Safe Nepal"}
                </Text>
             </View>
             
@@ -110,6 +108,7 @@ export default function HomeScreen({ navigation, route }) {
             </View>
           </View>
 
+          {/* WEATHER SECTION */}
           <View style={[styles.weatherCard, { backgroundColor: colors.card }]}>
             {loading ? <ActivityIndicator color={colors.primary} size="small" /> : (
               <View style={styles.weatherRow}>
@@ -125,7 +124,8 @@ export default function HomeScreen({ navigation, route }) {
             )}
           </View>
 
-          {userMode === 'POLICE' ? (
+          {/* DYNAMIC TOP SECTION */}
+          {userMode === 'RESPONDER' ? (
               <View style={styles.statsRow}>
                 <View style={[styles.statBox, { backgroundColor: colors.card, borderLeftWidth: 4, borderLeftColor: '#ef4444' }]}>
                     <Text style={[styles.statNum, { color: '#ef4444' }]}>03</Text>
@@ -137,39 +137,52 @@ export default function HomeScreen({ navigation, route }) {
                 </View>
               </View>
           ) : (
-            <View style={[styles.mainRiskCard, { backgroundColor: colors.card }]}>
+            <TouchableOpacity 
+              activeOpacity={0.9} 
+              onPress={() => navigation.navigate("Analytics")} 
+              style={[styles.mainRiskCard, { backgroundColor: colors.card }]}
+            >
                 <Text style={[styles.riskLabel, { color: colors.subText }]}>Current National Risk</Text>
                 <Animated.View style={[styles.lowBadge, { opacity: blinkAnim }]}>
                    <Text style={styles.lowText}>LOW</Text>
                 </Animated.View>
-                <Text style={[styles.riskDescription, { color: colors.subText }]}>Status: Secure. No immediate threats detected.</Text>
-            </View>
+                <Text style={[styles.riskDescription, { color: colors.subText }]}>
+                  Status: Secure. Tap to view detailed AI forecast.
+                </Text>
+            </TouchableOpacity>
           )}
 
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {userMode === 'POLICE' ? "Responder Tools" : "Emergency Services"}
+              {userMode === 'RESPONDER' ? "Responder Tools" : "Emergency Services"}
           </Text>
 
+          {/* GRID MENU */}
           <View style={styles.grid}>
-            {userMode === 'POLICE' ? (
+            {userMode === 'RESPONDER' ? (
               <>
-                <ActionItem title="SOS Feed" icon="shield-alert" iconFamily="community" color="#ef4444" colors={colors} />
+                <ActionItem title="SOS Feed" icon="shield-alert" iconFamily="community" color="#ef4444" colors={colors} onPress={() => navigation.navigate("Alerts")} />
                 <ActionItem title="Patrol" icon="map-marker-radius" iconFamily="community" color="#3b82f6" colors={colors} onPress={() => navigation.navigate("RealTimeMap")} />
-                <ActionItem title="Broadcast" icon="megaphone" iconFamily="ionicons" color="#f59e0b" colors={colors} />
-                <ActionItem title="Units" icon="police-badge" iconFamily="community" color="#94a3b8" colors={colors} />
-                <ActionItem title="Reports" icon="file-document" iconFamily="community" color="#6366f1" colors={colors} />
-                <ActionItem title="History" icon="history" color="#2DD4BF" colors={colors} />
+                <ActionItem title="Dashboard" icon="dashboard" iconFamily="material" color="#6366f1" colors={colors} onPress={() => navigation.navigate("PoliceDashboard")} />
+                <ActionItem title="Risk Data" icon="insert-chart-outlined" color="#A78BFA" colors={colors} onPress={() => navigation.navigate("Analytics")} />
+                <ActionItem title="Volunteer" icon="people" iconFamily="material" color="#2DD4BF" colors={colors} onPress={() => navigation.navigate("Volunteer")} />
+                <ActionItem title="Settings" icon="settings" iconFamily="material" color="#94a3b8" colors={colors} onPress={() => navigation.navigate("AccountSettings")} />
               </>
             ) : (
               <>
+                {/* Citizens Row 1 */}
                 <ActionItem title="SOS" icon="notifications-active" color="#F87171" colors={colors} onPress={() => navigation.navigate("SOSScreen")} />
-                <ActionItem title="Alerts" icon="warning" color="#FBBF24" colors={colors} onPress={() => navigation.navigate("AlertScreen")} />
-                <ActionItem title="Predict" icon="insert-chart-outlined" color="#A78BFA" colors={colors} onPress={() => navigation.navigate("PredictionAnalyticsScreen")} />
-                <ActionItem title="Relief" icon="home" color="#60A5FA" colors={colors} onPress={() => navigation.navigate("ReliefCenterScreen")} />
-                <ActionItem title="Map" icon="map" color="#2196F3" colors={colors} onPress={() => navigation.navigate("RealTimeMap")} />
+                {/* ✅ FIX: Matches Stack.Screen name="Alerts" */}
+                <ActionItem title="Alerts" icon="warning" color="#FBBF24" colors={colors} onPress={() => navigation.navigate("Alerts")} />
+                <ActionItem title="Forecast" icon="auto-graph" iconFamily="material" color="#A78BFA" colors={colors} onPress={() => navigation.navigate("Analytics")} />
+                
+                {/* Citizens Row 2 */}
+                <ActionItem title="Relief" icon="home" color="#60A5FA" colors={colors} onPress={() => navigation.navigate("ReliefCenter")} />
+                <ActionItem title="Map" icon="map" color="#2196F3" colors={colors} onPress={() => navigation.navigate("GeneralMap")} />
                 <ActionItem title="History" icon="history" color="#2DD4BF" colors={colors} onPress={() => navigation.navigate("History")} />
-                <ActionItem title="Contacts" icon="contact-phone" color="#94A3B8" colors={colors} onPress={() => navigation.navigate("EmergencyContactsScreen")} />
-                <ActionItem title="Safety" icon="lightbulb" color="#34D399" colors={colors} onPress={() => navigation.navigate("SafetyTipsScreen")} />
+                
+                {/* Citizens Row 3 */}
+                <ActionItem title="Contacts" icon="contact-phone" color="#94A3B8" colors={colors} onPress={() => navigation.navigate("EmergencyContacts")} />
+                <ActionItem title="Safety" icon="lightbulb" color="#34D399" colors={colors} onPress={() => navigation.navigate("SafetyTips")} />
                 <ActionItem title="First Aid" icon="medical-bag" iconFamily="community" color="#EF4444" colors={colors} onPress={() => navigation.navigate("FirstAidScreen")} />
               </>
             )}
@@ -177,7 +190,8 @@ export default function HomeScreen({ navigation, route }) {
         </ScrollView>
       </LinearGradient>
 
-      {userMode === 'CITIZEN' && (
+      {/* FAB */}
+      {userMode !== 'RESPONDER' && (
         <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("NewReport")} activeOpacity={0.8}>
             <LinearGradient colors={["#FF4D4D", "#D32F2F"]} style={styles.fabGradient}>
                 <MaterialIcons name="report-problem" size={32} color="#fff" />
@@ -189,6 +203,7 @@ export default function HomeScreen({ navigation, route }) {
   );
 }
 
+// ... styles remain the same ...
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingTop: 60, paddingHorizontal: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
@@ -207,8 +222,8 @@ const styles = StyleSheet.create({
   lowText: { color: "#39FF14", fontSize: 32, fontWeight: "900" },
   riskDescription: { fontSize: 13, textAlign: "center", opacity: 0.8 },
   sectionTitle: { fontSize: 19, fontWeight: "bold", marginHorizontal: 20, marginTop: 30, marginBottom: 15 },
-  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 10 },
-  actionItem: { width: width / 3 - 7, alignItems: "center", marginBottom: 20 },
+  grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 10, justifyContent: 'center' },
+  actionItem: { width: width / 3 - 10, alignItems: "center", marginBottom: 20 },
   iconCircle: { width: 66, height: 66, borderRadius: 24, justifyContent: "center", alignItems: "center", marginBottom: 8, elevation: 5, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5 },
   actionText: { fontSize: 12, fontWeight: "700", textAlign: 'center' },
   fab: { position: 'absolute', bottom: 30, right: 25, width: 85, height: 85, borderRadius: 42.5, elevation: 15 },

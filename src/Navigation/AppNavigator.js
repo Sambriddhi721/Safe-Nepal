@@ -3,15 +3,26 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
 // --- Context ---
-// Ensure the path matches your src folder structure
 import { AuthContext } from './src/context/AuthContext';
 
-// --- Screens ---
-import HomeScreen from './src/screens/HomeScreen'; 
-import ResponderDashboard from './src/screens/ResponderDashboard'; 
-import SOSListScreen from './src/screens/SOSListScreen'; 
-import LoginScreen from './src/screens/LoginScreen';
-import ProfileScreen from './src/screens/ProfileScreen'; 
+// --- 📂 AUTH SCREENS ---
+import LoginScreen from './src/screens/Shared Folder/LoginScreen';
+
+// --- 📂 CITIZEN SCREENS ---
+import HomeScreen from './src/screens/Citizen Folder/HomeScreen';
+import SOSScreen from './src/screens/Citizen Folder/SOSScreen';
+import SOSListScreen from './src/screens/Citizen Folder/SOSListScreen';
+import SafetyTipsScreen from './src/screens/Citizen Folder/SafetyTipsScreen';
+import AddContactScreen from './src/screens/Citizen Folder/AddContactScreen';
+
+// --- 📂 POLICE / RESPONDER SCREENS ---
+import ResponderDashboard from './src/screens/Police Folder/ResponderDashboard';
+import RealTimeMapScreen from './src/screens/Police Folder/RealTimeMapScreen';
+import AlertScreen from './src/screens/Police Folder/AlertScreen';
+import VolunteerScreen from './src/screens/Police Folder/VolunteerScreen';
+
+// --- 📂 SHARED SCREENS ---
+import ProfileScreen from './src/screens/Shared Folder/AccountSettings'; // Adjust if filename is different
 
 const Stack = createStackNavigator();
 
@@ -21,8 +32,6 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator 
-        // CRITICAL: When role changes, this key forces the entire 
-        // navigator to unmount and restart, resetting you to the top screen.
         key={role} 
         screenOptions={{ headerShown: false }}
       >
@@ -32,16 +41,20 @@ export default function AppNavigator() {
         ) : role === "RESPONDER" ? (
           /* 2. Police Mode Stack */
           <>
-            {/* The FIRST screen here is what opens when you switch to Police */}
             <Stack.Screen name="ResponderHome" component={ResponderDashboard} />
+            <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} />
+            <Stack.Screen name="AlertScreen" component={AlertScreen} />
             <Stack.Screen name="SOSList" component={SOSListScreen} />
+            <Stack.Screen name="Volunteer" component={VolunteerScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
           </>
         ) : (
           /* 3. Citizen Mode Stack */
           <>
-            {/* The FIRST screen here is what opens when you start or switch back */}
             <Stack.Screen name="UserHome" component={HomeScreen} />
+            <Stack.Screen name="SOS" component={SOSScreen} />
+            <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} />
+            <Stack.Screen name="AddContact" component={AddContactScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
           </>
         )}

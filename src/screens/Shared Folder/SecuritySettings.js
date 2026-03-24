@@ -10,8 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ThemeContext } from '../context/ThemeContext';
-
+import { ThemeContext } from '../../context/ThemeContext';
 export default function SecuritySettings({ navigation }) {
   const { colors, isDarkMode } = useContext(ThemeContext);
 

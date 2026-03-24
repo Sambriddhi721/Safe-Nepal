@@ -4,8 +4,10 @@ import {
   ActivityIndicator, SafeAreaView, Platform 
 } from "react-native";
 import axios from "axios";
-import { AuthContext } from "../context/AuthContext";
-import { API_BASE } from "../config";
+
+// ✅ Path remains ../../ because these are in the root src folder
+import { AuthContext } from "../../context/AuthContext";
+import { API_BASE } from "../../config";
 
 const { width } = Dimensions.get('window');
 
@@ -32,7 +34,7 @@ export default function RealTimeMapScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 1. HUD OVERLAY - Kept at the top */}
+      {/* 1. HUD OVERLAY */}
       <View style={styles.hudContainer}>
         <Text style={styles.hudTitle}>HAZARD MONITORING</Text>
         <View style={styles.statusRow}>
@@ -44,28 +46,34 @@ export default function RealTimeMapScreen() {
       {/* 2. THE FULL MAP CONTAINER */}
       <View style={styles.mapWrapper}>
         <Image 
+          // ✅ FIX: Changed to ./ because the image is in the same folder as this file
           source={require('./nepal_map.jpg')} 
           style={styles.mapImage}
-          resizeMode="contain" // Changed to contain to show the whole image
+          resizeMode="contain" 
         />
 
         {/* 3. SOS MARKERS */}
-        {!loading && sosList.map((item, index) => (
-          <View 
-            key={index} 
-            style={[
-              styles.markerContainer, 
-              { 
-                // Adjusted math to fit the contained map area
-                top: '30%', 
-                left: `${15 + (index * 20) % 70}%` 
-              }
-            ]} 
-          >
-            <View style={styles.pulseRing} />
-            <View style={styles.coreMarker} />
-          </View>
-        ))}
+        {!loading && sosList.map((item, index) => {
+          // Spread markers across the static image
+          const topPos = `${20 + (index * 15) % 60}%`;
+          const leftPos = `${10 + (index * 25) % 80}%`;
+
+          return (
+            <View 
+              key={index} 
+              style={[
+                styles.markerContainer, 
+                { top: topPos, left: leftPos }
+              ]} 
+            >
+              <View style={styles.pulseRing} />
+              <View style={styles.coreMarker} />
+              <View style={styles.markerLabel}>
+                 <Text style={styles.labelText}>{item.type || 'SOS'}</Text>
+              </View>
+            </View>
+          );
+        })}
       </View>
 
       {loading && (
@@ -85,64 +93,71 @@ export default function RealTimeMapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#020617' 
-  },
+  container: { flex: 1, backgroundColor: '#020617' },
   hudContainer: {
     padding: 20,
     backgroundColor: 'rgba(15, 23, 42, 0.9)',
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
+    paddingTop: Platform.OS === 'android' ? 45 : 20,
     zIndex: 10,
   },
-  hudTitle: { color: '#f8fafc', fontSize: 18, fontWeight: 'bold' },
+  hudTitle: { color: '#f8fafc', fontSize: 18, fontWeight: 'bold', letterSpacing: 1 },
   statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e', marginRight: 8 },
   statusText: { color: '#22c55e', fontSize: 10, fontWeight: 'bold' },
-  
-  // Wrapper allows the image to take up the center space fully
   mapWrapper: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
   },
   mapImage: {
     width: width,
     height: '100%',
-    opacity: 0.8,
+    opacity: 0.6, 
   },
-  
   markerContainer: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
   coreMarker: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#EF4444',
     borderWidth: 2,
     borderColor: '#fff',
+    zIndex: 5,
   },
   pulseRing: {
     position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(239, 68, 68, 0.4)',
     borderWidth: 1,
     borderColor: '#EF4444',
   },
+  markerLabel: {
+    position: 'absolute',
+    top: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: '#EF4444'
+  },
+  labelText: { color: '#fff', fontSize: 8, fontWeight: 'bold' },
   loaderContainer: { 
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center', 
     alignItems: 'center', 
-    backgroundColor: 'rgba(2, 6, 23, 0.7)' 
+    backgroundColor: 'rgba(2, 6, 23, 0.85)' 
   },
-  loaderText: { color: '#94a3b8', marginTop: 12, fontSize: 12 },
+  loaderText: { color: '#94a3b8', marginTop: 12, fontSize: 12, fontWeight: 'bold' },
   footer: {
     padding: 20,
     backgroundColor: 'rgba(15, 23, 42, 0.9)',

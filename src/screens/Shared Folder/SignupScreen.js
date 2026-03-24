@@ -11,7 +11,7 @@ import {
 import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons, FontAwesome } from "@expo/vector-icons";
-import { API_BASE } from "../config";
+import { API_BASE } from "../../config";
 
 export default function SignupScreen({ navigation }) {
   const [fullName, setFullName] = useState("");

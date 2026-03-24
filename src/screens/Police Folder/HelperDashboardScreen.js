@@ -2,7 +2,7 @@ import React, { useContext } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "../../context/AuthContext";
 
 export default function HelperDashboardScreen({ navigation }) {
   // We destructure signOut, but handle the case where user might be null for now

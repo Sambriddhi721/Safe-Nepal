@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
-import SafeMapView from "../components/SafeMapView"; // Ensure this path is correct
+import SafeMapView from "../../components/SafeMapView"; // Ensure this path is correct
 
 const { width } = Dimensions.get("window");
 
