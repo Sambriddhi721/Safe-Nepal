@@ -1,7 +1,13 @@
 import React, { useContext } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, 
-  ScrollView, StatusBar, Image, Platform 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  Image, 
+  StatusBar,
+  Platform 
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,52 +20,23 @@ export default function AccountScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const isDarkMode = theme === 'dark';
 
-  // Focused only on Personal/Identity data
-  const PERSONAL_INFO_ITEMS = [
-    { 
-      id: '1', 
-      title: 'Update Profile', 
-      subtitle: 'Change name, phone, or photo', 
-      icon: 'person-outline', 
-      target: 'EditProfile' 
-    },
-    { 
-      id: '2', 
-      title: 'Identity Verification', 
-      subtitle: 'Student ID: 2331203 • Verified', 
-      icon: 'badge-account-outline', 
-      lib: 'MaterialCommunityIcons' 
-    },
-    { 
-      id: '3', 
-      title: 'Email Address', 
-      subtitle: user?.email || 'sambriddhidawadi@university.edu', 
-      icon: 'mail-outline' 
-    },
-  ];
-
-  const renderItem = (item, index) => {
-    const IconLib = item.lib === 'MaterialCommunityIcons' ? MaterialCommunityIcons : Ionicons;
+  // Helper to render navigation rows
+  const MenuRow = ({ icon, title, target, lib = 'Ionicons' }) => {
+    const IconLib = lib === 'MaterialCommunityIcons' ? MaterialCommunityIcons : Ionicons;
+    
     return (
       <TouchableOpacity 
-        key={item.id}
+        style={[styles.menuItem, { borderBottomColor: colors.border }]} 
+        onPress={() => navigation.navigate(target)}
         activeOpacity={0.7}
-        style={[
-          styles.menuItem, 
-          index !== PERSONAL_INFO_ITEMS.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: colors.border }
-        ]}
-        onPress={() => item.target ? navigation.navigate(item.target) : null}
       >
         <View style={styles.menuLeft}>
           <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-            <IconLib name={item.icon} size={20} color={colors.primary || '#3b82f6'} />
+            <IconLib name={icon} size={22} color={colors.primary || '#3b82f6'} />
           </View>
-          <View>
-            <Text style={[styles.itemTitle, { color: colors.text }]}>{item.title}</Text>
-            <Text style={[styles.itemSubtitle, { color: colors.subText }]}>{item.subtitle}</Text>
-          </View>
+          <Text style={[styles.menuTitle, { color: colors.text }]}>{title}</Text>
         </View>
-        {item.target && <Ionicons name="chevron-forward" size={18} color={colors.subText} />}
+        <Ionicons name="chevron-forward" size={18} color={colors.subText} />
       </TouchableOpacity>
     );
   };
@@ -67,54 +44,88 @@ export default function AccountScreen({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
-
-      {/* HEADER */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-          <Ionicons name="arrow-back" size={26} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Personal Information</Text>
-        <View style={{ width: 28 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
-        {/* LARGE PROFILE DISPLAY */}
+      
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 40 }}
+      >
+        {/* HERO SECTION */}
         <View style={styles.profileHero}>
-          <View style={styles.avatarWrapper}>
+          <View style={styles.avatarContainer}>
             <Image 
-              source={{ uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || 'Sambriddhi')}&background=3b82f6&color=fff&size=128` }} 
-              style={styles.largeAvatar} 
+              source={{ 
+                uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || 'Sambriddhi Dawadi')}&background=3b82f6&color=fff&size=128` 
+              }} 
+              style={styles.avatar} 
             />
-            <View style={styles.editBadge}>
-                <Ionicons name="camera" size={14} color="#fff" />
+            <View style={[styles.editIndicator, { borderColor: colors.background }]}>
+              <Ionicons name="shield-checkmark" size={12} color="#fff" />
             </View>
           </View>
-          <Text style={[styles.heroName, { color: colors.text }]}>{user?.full_name || "Sambriddhi Dawadi"}</Text>
-          <View style={styles.statusPill}>
-             <MaterialCommunityIcons name="shield-check" size={14} color="#3b82f6" />
-             <Text style={styles.statusText}>Verified Citizen</Text>
+          
+          <Text style={[styles.heroName, { color: colors.text }]}>
+            {user?.full_name || "Sambriddhi Dawadi"}
+          </Text>
+          
+          <View style={styles.pill}>
+            <MaterialCommunityIcons name="school-outline" size={14} color="#3b82f6" />
+            <Text style={styles.pillText}>Student ID: 2331203</Text>
           </View>
         </View>
 
-        {/* DETAILS LIST */}
-        <View style={styles.sectionWrapper}>
-          <Text style={[styles.sectionLabel, { color: colors.subText }]}>Identity & Contact</Text>
-          <View style={[styles.groupCard, { backgroundColor: colors.card }]}>
-            {PERSONAL_INFO_ITEMS.map((item, index) => renderItem(item, index))}
+        {/* ACCOUNT & IDENTITY SECTION */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.subText }]}>Account & Identity</Text>
+          <View style={[styles.group, { backgroundColor: colors.card }]}>
+            {/* Navigates to the Personal Details Display screen */}
+            <MenuRow 
+              icon="person-outline" 
+              title="Personal Details" 
+              target="AccountSettings" 
+            />
+            <MenuRow 
+              icon="shield-lock-outline" 
+              title="Password & Security" 
+              target="SecuritySettings" 
+              lib="MaterialCommunityIcons" 
+            />
+            <MenuRow 
+              icon="notifications-outline" 
+              title="Notifications" 
+              target="NotificationSettings" 
+            />
           </View>
         </View>
 
-        {/* LOGOUT BUTTON (Moved here for easier access) */}
+        {/* APP SETTINGS SECTION */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: colors.subText }]}>Preferences</Text>
+          <View style={[styles.group, { backgroundColor: colors.card }]}>
+            <MenuRow 
+              icon="information-circle-outline" 
+              title="About Safe Nepal" 
+              target="About" 
+            />
+            <MenuRow 
+              icon="shield-outline" 
+              title="Privacy Policy" 
+              target="PrivacySettings" 
+            />
+          </View>
+        </View>
+
+        {/* LOGOUT */}
         <TouchableOpacity 
-            style={[styles.logoutCard, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]} 
-            onPress={() => signOut()}
+          style={[styles.logoutBtn, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)' }]} 
+          onPress={signOut}
         >
-            <Ionicons name="log-out-outline" size={20} color="#ef4444" style={{marginRight: 8}} />
-            <Text style={styles.logoutText}>Sign Out from Device</Text>
+          <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+          <Text style={styles.logoutText}>Sign Out from Device</Text>
         </TouchableOpacity>
 
-        <Text style={styles.footerVersion}>Safe Nepal v1.4.2 • Profile ID: SN-2331203</Text>
+        <Text style={[styles.versionText, { color: colors.subText }]}>
+          Safe Nepal v1.4.2 (Beta)
+        </Text>
       </ScrollView>
     </View>
   );
@@ -122,29 +133,95 @@ export default function AccountScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 15 },
-  headerTitle: { fontSize: 18, fontWeight: '800' },
-  closeBtn: { padding: 4 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 40 },
-  
-  profileHero: { alignItems: 'center', marginVertical: 30 },
-  avatarWrapper: { position: 'relative' },
-  largeAvatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#3b82f6' },
-  editBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#3b82f6', borderRadius: 12, width: 28, height: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#020617' },
-  heroName: { fontSize: 22, fontWeight: '800', marginTop: 15 },
-  statusPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(59, 130, 246, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 8 },
-  statusText: { color: '#3b82f6', fontSize: 12, fontWeight: '700', marginLeft: 6 },
-
-  sectionWrapper: { marginBottom: 25 },
-  sectionLabel: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', marginBottom: 12, marginLeft: 6, letterSpacing: 1.2 },
-  groupCard: { borderRadius: 24, overflow: 'hidden' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
+  profileHero: { alignItems: 'center', marginBottom: 30 },
+  avatarContainer: { position: 'relative' },
+  avatar: { 
+    width: 110, 
+    height: 110, 
+    borderRadius: 55, 
+    borderWidth: 3, 
+    borderColor: '#3b82f6' 
+  },
+  editIndicator: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    backgroundColor: '#3b82f6',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  heroName: { 
+    fontSize: 24, 
+    fontWeight: '900', 
+    marginTop: 15,
+    letterSpacing: -0.5 
+  },
+  pill: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(59, 130, 246, 0.1)', 
+    paddingHorizontal: 14, 
+    paddingVertical: 6, 
+    borderRadius: 20, 
+    marginTop: 10 
+  },
+  pillText: { 
+    color: '#3b82f6', 
+    fontSize: 12, 
+    fontWeight: '700', 
+    marginLeft: 6 
+  },
+  section: { paddingHorizontal: 16, marginTop: 20 },
+  sectionLabel: { 
+    fontSize: 11, 
+    fontWeight: '900', 
+    textTransform: 'uppercase', 
+    marginBottom: 12, 
+    marginLeft: 10, 
+    letterSpacing: 1.5 
+  },
+  group: { borderRadius: 24, overflow: 'hidden' },
+  menuItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    padding: 18, 
+    borderBottomWidth: 0.5 
+  },
   menuLeft: { flexDirection: 'row', alignItems: 'center' },
-  iconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  itemTitle: { fontSize: 15, fontWeight: '700' },
-  itemSubtitle: { fontSize: 12, marginTop: 4, opacity: 0.7 },
-  
-  logoutCard: { borderRadius: 20, padding: 18, alignItems: 'center', marginTop: 20, flexDirection: 'row', justifyContent: 'center' },
-  logoutText: { color: '#ef4444', fontWeight: '800', fontSize: 15 },
-  footerVersion: { textAlign: 'center', color: '#64748b', fontSize: 11, marginTop: 40 },
+  iconBox: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 14, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 15 
+  },
+  menuTitle: { fontSize: 16, fontWeight: '700' },
+  logoutBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: 40, 
+    padding: 18, 
+    marginHorizontal: 16, 
+    borderRadius: 22 
+  },
+  logoutText: { 
+    color: '#ef4444', 
+    fontWeight: '800', 
+    fontSize: 16, 
+    marginLeft: 10 
+  },
+  versionText: {
+    textAlign: 'center',
+    marginTop: 30,
+    fontSize: 12,
+    fontWeight: '600',
+    opacity: 0.6
+  }
 });

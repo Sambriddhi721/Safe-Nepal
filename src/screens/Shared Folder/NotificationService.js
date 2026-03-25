@@ -7,8 +7,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { LineChart } from "react-native-chart-kit";
 
-// ✅ FIXED IMPORT PATH: Go up one level to 'screens', then into 'Shared Folder'
-import { NotificationService } from "../Shared Folder/NotificationService"; 
+// ✅ CORRECTED IMPORT PATH (3 levels up to src, then into sharedfolder)
+import { NotificationService } from "../../../sharedfolder/NotificationService"; 
 import { API_BASE } from "../../config";
 
 const screenWidth = Dimensions.get("window").width;
@@ -17,8 +17,6 @@ export default function PredictionAnalyticsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("Flood");
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
-  // State for your SARIMAX/LSTM results
   const [analytics, setAnalytics] = useState({
     riskLevel: "Low",
     changePercent: 0,
@@ -52,16 +50,15 @@ export default function PredictionAnalyticsScreen({ navigation }) {
         lastUpdated: new Date().toLocaleTimeString(),
       });
 
-      // ✅ TRIGGER NOTIFICATION ON HIGH RISK
+      // ✅ TRIGGER LOCAL NOTIFICATION ON HIGH RISK
       if (data.risk_level?.toLowerCase().includes("high")) {
-        NotificationService.sendLocalNotification(
-          `High ${hazardType} Risk Alert`,
-          `Our ${analytics.model} model has detected increasing risk levels in your zone.`
+        NotificationService.triggerDisasterAlert(
+          `High ${hazardType} Risk`,
+          `Our ${data.model} model has detected a High Risk in your current zone.`
         );
       }
     } catch (err) {
       console.log("Analytics error:", err.message);
-      setAnalytics(prev => ({ ...prev, lastUpdated: "Offline Mode" }));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -82,7 +79,6 @@ export default function PredictionAnalyticsScreen({ navigation }) {
 
   return (
     <LinearGradient colors={["#020617", "#0f172a", "#1e293b"]} style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
           <Ionicons name="chevron-back" size={26} color="#fff" />
@@ -93,7 +89,6 @@ export default function PredictionAnalyticsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
       <View style={styles.toggleRow}>
         {["Flood", "Landslide"].map((tab) => (
           <TouchableOpacity
@@ -110,7 +105,6 @@ export default function PredictionAnalyticsScreen({ navigation }) {
         style={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />}
       >
-        {/* Risk Card */}
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Real-time Prediction Result</Text>
           <Text style={[styles.mainRiskValue, { color: riskColor }]}>
@@ -141,24 +135,22 @@ export default function PredictionAnalyticsScreen({ navigation }) {
           )}
         </View>
 
-        {/* Info Grid */}
         <View style={styles.infoGrid}>
             <View style={styles.smallCard}>
                 <Text style={styles.cardLabel}>Model Accuracy</Text>
                 <Text style={styles.valueText}>{analytics.accuracy}%</Text>
             </View>
             <View style={styles.smallCard}>
-                <Text style={styles.cardLabel}>Architecture</Text>
+                <Text style={styles.cardLabel}>Model Architecture</Text>
                 <Text style={styles.valueText}>{analytics.model}</Text>
             </View>
         </View>
 
-        {/* Status Card */}
         <View style={styles.card}>
             <Text style={styles.cardLabel}>System Connectivity</Text>
             <View style={styles.statusRow}>
                 <View style={[styles.dot, { backgroundColor: '#22c55e' }]} />
-                <Text style={styles.infoValue}>Backend: Online ({analytics.model} Ready)</Text>
+                <Text style={styles.infoValue}>Backend: Online (SARIMAX Ready)</Text>
             </View>
             <Text style={[styles.infoValue, { marginTop: 8, color: '#94a3b8' }]}>
               Last Check: {analytics.lastUpdated}
@@ -170,8 +162,8 @@ export default function PredictionAnalyticsScreen({ navigation }) {
 }
 
 const chartConfig = {
-  backgroundGradientFrom: "#0f172a",
-  backgroundGradientTo: "#0f172a",
+  backgroundGradientFrom: "#111827",
+  backgroundGradientTo: "#111827",
   color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
   labelColor: (opacity = 1) => `rgba(148, 163, 184, ${opacity})`,
   strokeWidth: 3,
@@ -182,7 +174,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   headerTitle: { color: "#fff", fontSize: 18, fontWeight: "800" },
-  iconBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  iconBtn: { width: 40, height: 40, justifyContent: 'center' },
   toggleRow: { flexDirection: "row", marginHorizontal: 20, borderRadius: 15, backgroundColor: "#1e293b", padding: 4, marginBottom: 20 },
   toggleBtn: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 12 },
   activeToggle: { backgroundColor: "#3b82f6" },
