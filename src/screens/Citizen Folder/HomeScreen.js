@@ -19,7 +19,7 @@ import { AuthContext } from "../../context/AuthContext";
 const { width } = Dimensions.get("window");
 
 const ActionItem = ({ title, icon, color, onPress, colors, iconFamily = "material" }) => (
-  <TouchableOpacity style={styles.actionItem} onPress={onPress}>
+  <TouchableOpacity style={styles.actionItem} onPress={onPress} activeOpacity={0.7}>
     <View style={[styles.iconCircle, { backgroundColor: colors.card, shadowColor: color }]}>
       {iconFamily === "material" && <MaterialIcons name={icon} size={26} color={color} />}
       {iconFamily === "fontAwesome" && <FontAwesome5 name={icon} size={22} color={color} />}
@@ -169,21 +169,34 @@ export default function HomeScreen({ navigation, route }) {
               </>
             ) : (
               <>
-                {/* Citizens Row 1 */}
+                {/* Row 1 */}
                 <ActionItem title="SOS" icon="notifications-active" color="#F87171" colors={colors} onPress={() => navigation.navigate("SOSScreen")} />
-                {/* ✅ FIX: Matches Stack.Screen name="Alerts" */}
                 <ActionItem title="Alerts" icon="warning" color="#FBBF24" colors={colors} onPress={() => navigation.navigate("Alerts")} />
                 <ActionItem title="Forecast" icon="auto-graph" iconFamily="material" color="#A78BFA" colors={colors} onPress={() => navigation.navigate("Analytics")} />
                 
-                {/* Citizens Row 2 */}
+                {/* Row 2 */}
                 <ActionItem title="Relief" icon="home" color="#60A5FA" colors={colors} onPress={() => navigation.navigate("ReliefCenter")} />
                 <ActionItem title="Map" icon="map" color="#2196F3" colors={colors} onPress={() => navigation.navigate("GeneralMap")} />
                 <ActionItem title="History" icon="history" color="#2DD4BF" colors={colors} onPress={() => navigation.navigate("History")} />
                 
-                {/* Citizens Row 3 */}
+                {/* Row 3 - UPDATED: Merged Safety and added Safe Zones */}
                 <ActionItem title="Contacts" icon="contact-phone" color="#94A3B8" colors={colors} onPress={() => navigation.navigate("EmergencyContacts")} />
-                <ActionItem title="Safety" icon="lightbulb" color="#34D399" colors={colors} onPress={() => navigation.navigate("SafetyTips")} />
-                <ActionItem title="First Aid" icon="medical-bag" iconFamily="community" color="#EF4444" colors={colors} onPress={() => navigation.navigate("FirstAidScreen")} />
+                <ActionItem 
+                    title="Safety & Med" 
+                    icon="shield-check" 
+                    iconFamily="community" 
+                    color="#34D399" 
+                    colors={colors} 
+                    onPress={() => navigation.navigate("SafetyTips")} 
+                />
+                <ActionItem 
+                    title="Safe Zones" 
+                    icon="home-city" 
+                    iconFamily="community" 
+                    color="#2ed573" 
+                    colors={colors} 
+                    onPress={() => navigation.navigate("SafeZones")} 
+                />
               </>
             )}
           </View>
@@ -203,7 +216,6 @@ export default function HomeScreen({ navigation, route }) {
   );
 }
 
-// ... styles remain the same ...
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingTop: 60, paddingHorizontal: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },

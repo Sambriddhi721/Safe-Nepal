@@ -1,125 +1,131 @@
-import React, { useState, useContext } from 'react';
+import React, { useContext } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
-  TextInput, Alert, Image, ActivityIndicator, KeyboardAvoidingView, Platform 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  Image, 
+  Platform, 
+  StatusBar 
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-// ImagePicker import removed to fix native module error
+import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { ThemeContext } from '../../context/ThemeContext';
 import { AuthContext } from '../../context/AuthContext'; 
 
 export default function AccountSettings({ navigation }) {
   const { colors } = useContext(ThemeContext);
-  const { user, setUser } = useContext(AuthContext); // Assuming setUser exists to update local state
-  
-  const [profile, setProfile] = useState({
-    name: user?.full_name || 'Sambriddhi Dawadi',
-    email: user?.email || 'user@example.com',
-    avatar: user?.profile_image || null 
-  });
-  const [loading, setLoading] = useState(false);
+  const { user, signOut } = useContext(AuthContext); 
 
-  // Placeholder for when you fix the native module issues later
-  const handlePhotoPress = () => {
-    Alert.alert("Feature Paused", "Image uploading is currently being reconfigured. You can still update your name!");
-  };
+  // Reusable row component for the settings list
+  const SettingRow = ({ icon, label, subLabel, onPress, iconLib = "Ionicons", color }) => {
+    const IconLib = 
+      iconLib === "MaterialCommunityIcons" ? MaterialCommunityIcons : 
+      iconLib === "Feather" ? Feather : 
+      Ionicons;
 
-  const handleUpdate = async () => {
-    if (!profile.name.trim()) {
-      Alert.alert("Error", "Name cannot be empty");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Using a standard JSON body since we aren't sending a file currently
-      const response = await fetch('http://192.168.111.70:5000/api/auth/update-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: profile.name,
-          email: profile.email,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        Alert.alert("Success", "Profile updated successfully!");
-        // Update the global context so the change reflects everywhere
-        if (setUser) {
-          setUser({ ...user, full_name: profile.name });
-        }
-        navigation.goBack();
-      } else {
-        Alert.alert("Error", result.error || "Update failed");
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Connection Error", "Ensure your Flask server is running at 192.168.111.70:5000");
-    } finally {
-      setLoading(false);
-    }
+    return (
+      <TouchableOpacity 
+        style={[styles.row, { borderBottomColor: colors.border }]} 
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.rowLeft}>
+          <View style={[styles.iconContainer, { backgroundColor: colors.card }]}>
+            <IconLib name={icon} size={20} color={color || colors.accent} />
+          </View>
+          <View style={styles.textContainer}>
+            <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
+            {subLabel && <Text style={[styles.rowSubLabel, { color: colors.subText }]}>{subLabel}</Text>}
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.subText} />
+      </TouchableOpacity>
+    );
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === "ios" ? "padding" : "height"} 
-      style={[styles.container, { backgroundColor: colors.background }]}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* HEADER */}
+      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Account Settings</Text>
-        <View style={{ width: 24 }} />
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Account Center</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.avatarSection}>
-          <TouchableOpacity onPress={handlePhotoPress} style={[styles.avatarPlaceholder, { backgroundColor: colors.card }]}>
-            {profile.avatar ? (
-              <Image source={{ uri: profile.avatar }} style={styles.avatarImage} />
-            ) : (
-              <Ionicons name="person" size={50} color={colors.accent} />
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handlePhotoPress}>
-            <Text style={[styles.changePhotoText, { color: colors.accent }]}>Change Profile Photo</Text>
-          </TouchableOpacity>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollPadding}>
+        
+        {/* PROFILE CARD */}
+        <View style={styles.profileSection}>
+          <View style={styles.avatarWrapper}>
+            <View style={[styles.avatarLarge, { backgroundColor: colors.card, borderColor: colors.accent }]}>
+              <Text style={[styles.avatarText, { color: colors.accent }]}>
+                {user?.full_name?.charAt(0) || 'S'}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.cameraBadge}>
+              <Ionicons name="camera" size={14} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.nameText, { color: colors.text }]}>{user?.full_name || 'Sambriddhi Dawadi'}</Text>
+          <Text style={[styles.idText, { color: colors.subText }]}>Student ID: 2331203</Text>
         </View>
 
-        <Text style={[styles.label, { color: colors.subText }]}>Full Name</Text>
-        <TextInput 
-          style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-          value={profile.name}
-          onChangeText={(txt) => setProfile({...profile, name: txt})}
-          placeholderTextColor={colors.subText}
-        />
+        {/* ACCOUNT SETTINGS GROUP */}
+        <Text style={styles.sectionTitle}>Account Settings</Text>
+        <View style={[styles.group, { backgroundColor: colors.card }]}>
+          <SettingRow 
+            icon="person-outline" 
+            label="Personal Details" 
+            subLabel="Name, email, and contact info"
+            onPress={() => navigation.navigate('EditProfile')} 
+          />
+          <SettingRow 
+            icon="shield-lock-outline" 
+            iconLib="MaterialCommunityIcons"
+            label="Password & Security" 
+            subLabel="Login activity and 2FA"
+            onPress={() => navigation.navigate('SecuritySettings')} 
+          />
+          <SettingRow 
+            icon="users" 
+            iconLib="Feather"
+            label="Emergency Contacts" 
+            subLabel="Manage your SOS responders"
+            onPress={() => navigation.navigate('EmergencyContactScreen')} 
+          />
+        </View>
 
-        <Text style={[styles.label, { color: colors.subText }]}>Email Address</Text>
-        <TextInput 
-          style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border, opacity: 0.6 }]}
-          value={profile.email}
-          editable={false} 
-        />
+        {/* PREFERENCES GROUP */}
+        <Text style={styles.sectionTitle}>App Preferences</Text>
+        <View style={[styles.group, { backgroundColor: colors.card }]}>
+          <SettingRow 
+            icon="notifications-outline" 
+            label="Notifications" 
+            subLabel="Alert sounds and push settings"
+            onPress={() => {}} 
+          />
+          <SettingRow 
+            icon="moon-outline" 
+            label="Appearance" 
+            subLabel="Dark mode and themes"
+            onPress={() => {}} 
+          />
+        </View>
 
-        <TouchableOpacity 
-          style={[styles.saveBtn, { backgroundColor: colors.accent }]} 
-          onPress={handleUpdate}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveBtnText}>Update Profile</Text>
-          )}
+        {/* LOGOUT */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={signOut}>
+          <Ionicons name="log-out-outline" size={20} color="#ff4757" />
+          <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
+
+        <Text style={styles.versionText}>Safe Nepal v1.4.2 (Beta)</Text>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -129,52 +135,93 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    paddingHorizontal: 20, 
-    paddingTop: Platform.OS === 'ios' ? 60 : 40, 
-    paddingBottom: 10 
+    paddingHorizontal: 16, 
+    paddingBottom: 15 
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  scrollContent: { padding: 20 },
-  avatarSection: { alignItems: 'center', marginBottom: 30 },
-  avatarPlaceholder: { 
-    width: 110, 
-    height: 110, 
-    borderRadius: 55, 
+  headerTitle: { fontSize: 18, fontWeight: '800' },
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  scrollPadding: { paddingBottom: 50 },
+  
+  profileSection: { alignItems: 'center', marginVertical: 30 },
+  avatarWrapper: { position: 'relative' },
+  avatarLarge: { 
+    width: 100, 
+    height: 100, 
+    borderRadius: 50, 
     justifyContent: 'center', 
     alignItems: 'center', 
-    marginBottom: 12, 
-    overflow: 'hidden', 
-    borderWidth: 2, 
-    borderColor: '#3b82f6' 
+    borderWidth: 2 
   },
-  avatarImage: { width: '100%', height: '100%' },
-  changePhotoText: { fontWeight: '700', fontSize: 15 },
-  label: { 
-    fontSize: 11, 
+  avatarText: { fontSize: 36, fontWeight: 'bold' },
+  cameraBadge: { 
+    position: 'absolute', 
+    bottom: 0, 
+    right: 0, 
+    backgroundColor: '#3b82f6', 
+    width: 30, 
+    height: 30, 
+    borderRadius: 15, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    borderWidth: 3, 
+    borderColor: '#000' 
+  },
+  nameText: { fontSize: 22, fontWeight: 'bold', marginTop: 15 },
+  idText: { fontSize: 13, marginTop: 4, letterSpacing: 1 },
+
+  sectionTitle: { 
+    fontSize: 12, 
     fontWeight: '800', 
-    marginBottom: 8, 
-    textTransform: 'uppercase', 
-    marginTop: 15, 
-    letterSpacing: 0.5 
+    color: '#64748b', 
+    marginLeft: 20, 
+    marginBottom: 10, 
+    marginTop: 25, 
+    textTransform: 'uppercase' 
   },
-  input: { 
+  group: { 
+    marginHorizontal: 16, 
+    borderRadius: 20, 
+    overflow: 'hidden' 
+  },
+  row: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    padding: 16, 
+    borderBottomWidth: 1 
+  },
+  rowLeft: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    flex: 1 
+  },
+  iconContainer: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 12, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  textContainer: { marginLeft: 15 },
+  rowLabel: { fontSize: 15, fontWeight: '600' },
+  rowSubLabel: { fontSize: 12, marginTop: 2 },
+
+  logoutBtn: { 
+    flexDirection: 'row', 
+    marginHorizontal: 16, 
+    marginTop: 30, 
     height: 55, 
     borderRadius: 15, 
-    paddingHorizontal: 15, 
-    borderWidth: 1, 
-    fontSize: 16 
-  },
-  saveBtn: { 
-    height: 55, 
-    borderRadius: 15, 
+    backgroundColor: 'rgba(255, 71, 87, 0.1)', 
     justifyContent: 'center', 
     alignItems: 'center', 
-    marginTop: 40, 
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    gap: 10 
   },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
+  logoutText: { color: '#ff4757', fontWeight: 'bold', fontSize: 16 },
+  versionText: { 
+    textAlign: 'center', 
+    color: '#475569', 
+    fontSize: 12, 
+    marginTop: 30 
+  }
 });

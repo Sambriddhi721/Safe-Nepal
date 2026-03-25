@@ -21,6 +21,7 @@ import ReliefCenterScreen from './src/screens/Citizen Folder/ReliefCenterScreen'
 import EmergencyContactsScreen from './src/screens/Citizen Folder/EmergencyContactsScreen';
 import SafetyTipsScreen from './src/screens/Citizen Folder/SafetyTipsScreen';
 import PredictionAnalyticsScreen from './src/screens/Citizen Folder/PredictionAnalyticsScreen.js';
+import SafeZonesScreen from './src/screens/Citizen Folder/SafeZonesScreen'; // ✅ NEW IMPORT
 import ResponderDashboard from './src/screens/Police Folder/ResponderDashboard'; 
 import PoliceDashboardScreen from './src/screens/Police Folder/PoliceDashboardScreen';
 import AlertScreen from './src/screens/Police Folder/AlertScreen';
@@ -58,25 +59,19 @@ function AppNavigator() {
         }}
       >
         {token == null ? (
-          // --- AUTHENTICATION STACK ---
           <Stack.Group screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />
           </Stack.Group>
         ) : (
-          // --- MAIN APP STACK ---
           <>
-            {/* CORE FIX: This dynamic 'Home' route swaps components 
-              automatically when the 'role' variable changes.
-            */}
             <Stack.Screen 
               name="Home" 
               component={role === 'RESPONDER' ? ResponderDashboard : HomeScreen} 
               options={{ headerShown: false }} 
             />
             
-            {/* PROFILE & SETTINGS (Shared) */}
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AccountSettings" component={AccountSettings} options={{ title: 'Account' }} />
             <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: 'Notifications' }} />
@@ -87,9 +82,11 @@ function AppNavigator() {
             {/* SHARED FUNCTIONAL SCREENS */}
             <Stack.Screen name="Alerts" component={AlertScreen} options={{ title: 'Live Alerts' }} />
             <Stack.Screen name="Analytics" component={PredictionAnalyticsScreen} options={{ title: 'Risk Forecast' }} />
-            <Stack.Screen name="FirstAidScreen" component={SafetyTipsScreen} options={{ title: 'First Aid Guide' }} />
-            <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} options={{ title: 'Safety Tips' }} />
             <Stack.Screen name="GeneralMap" component={MapScreen} options={{ title: 'Interactive Map' }} />
+            
+            {/* ✅ Unified Safety/Med Routes */}
+            <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} options={{ title: 'Safety & Medical Guide' }} />
+            <Stack.Screen name="FirstAidScreen" component={SafetyTipsScreen} options={{ title: 'First Aid' }} />
 
             {/* CITIZEN SPECIFIC ROUTES */}
             <Stack.Screen name="SOSScreen" component={SOSScreen} options={{ title: 'Emergency SOS' }} />
@@ -97,6 +94,9 @@ function AppNavigator() {
             <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My Reports' }} />
             <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} options={{ title: 'Emergency Contacts' }} />
             <Stack.Screen name="NewReport" component={ReportDisasterScreen} options={{ title: 'Report Incident' }} />
+            
+            {/* ✅ NEW: Safe Zones Route */}
+            <Stack.Screen name="SafeZones" component={SafeZonesScreen} options={{ title: 'Nationwide Safe Zones' }} />
 
             {/* POLICE / RESPONDER SPECIFIC ROUTES */}
             <Stack.Screen name="PoliceDashboard" component={PoliceDashboardScreen} options={{ title: 'Force Dashboard' }} />

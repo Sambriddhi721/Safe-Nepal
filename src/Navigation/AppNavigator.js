@@ -22,7 +22,9 @@ import AlertScreen from './src/screens/Police Folder/AlertScreen';
 import VolunteerScreen from './src/screens/Police Folder/VolunteerScreen';
 
 // --- 📂 SHARED SCREENS ---
-import ProfileScreen from './src/screens/Shared Folder/AccountSettings'; // Adjust if filename is different
+// Important: Ensure this path leads to the new AccountScreen we built!
+import AccountScreen from './src/screens/Shared Folder/AccountScreen'; 
+import AccountSettings from './src/screens/Shared Folder/AccountSettings'; 
 
 const Stack = createStackNavigator();
 
@@ -46,16 +48,21 @@ export default function AppNavigator() {
             <Stack.Screen name="AlertScreen" component={AlertScreen} />
             <Stack.Screen name="SOSList" component={SOSListScreen} />
             <Stack.Screen name="Volunteer" component={VolunteerScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Profile" component={AccountScreen} />
+            <Stack.Screen name="AccountSettings" component={AccountSettings} />
           </>
         ) : (
           /* 3. Citizen Mode Stack */
           <>
             <Stack.Screen name="UserHome" component={HomeScreen} />
             <Stack.Screen name="SOS" component={SOSScreen} />
+            <Stack.Screen name="SOSList" component={SOSListScreen} />
             <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} />
             <Stack.Screen name="AddContact" component={AddContactScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
+            {/* Sync this with the item.target in your AccountScreen */}
+            <Stack.Screen name="EmergencyContactsScreen" component={AddContactScreen} />
+            <Stack.Screen name="Profile" component={AccountScreen} />
+            <Stack.Screen name="AccountSettings" component={AccountSettings} />
           </>
         )}
       </Stack.Navigator>
