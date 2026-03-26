@@ -12,7 +12,8 @@
         "NSLocationWhenInUseUsageDescription": "SafeNepalApp uses your location to show nearby help.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "SafeNepalApp needs background location for emergency tracking.",
         "NSPhotoLibraryUsageDescription": "Safe Nepal needs access to your photos to let you update your profile picture.",
-        "NSCameraUsageDescription": "Safe Nepal needs camera access to report disaster evidence in real-time."
+        "NSCameraUsageDescription": "Safe Nepal needs camera access to report disaster evidence in real-time.",
+        "NSFaceIDUsageDescription": "Safe Nepal requires FaceID to verify Responder identity and secure Police Mode."
       }
     },
     "android": {
@@ -26,7 +27,9 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "NOTIFICATIONS"
+        "NOTIFICATIONS",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
       ]
     },
     "plugins": [
@@ -53,7 +56,8 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-local-authentication"
     ],
     "extra": {
       "eas": {
