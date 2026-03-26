@@ -1,5 +1,12 @@
 import React, { useContext, useEffect } from 'react';
-import { StatusBar, ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
+import { 
+  StatusBar, 
+  ActivityIndicator, 
+  View, 
+  StyleSheet, 
+  Platform, 
+  UIManager 
+} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,7 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext'; 
 import { AuthProvider, AuthContext } from './src/context/AuthContext'; 
 
-// ✅ FIXED IMPORT: Matches your "Shared Folder" exactly
+// Services
 import { NotificationService } from './src/screens/Shared Folder/NotificationService'; 
 
 // --- SCREEN IMPORTS ---
@@ -16,24 +23,28 @@ import WelcomeScreen from './src/screens/Shared Folder/WelcomeScreen';
 import LoginScreen from './src/screens/Shared Folder/LoginScreen'; 
 import SignupScreen from './src/screens/Shared Folder/SignupScreen';
 import ProfileScreen from './src/screens/Shared Folder/ProfileScreen'; 
+
+// Citizen Folder
 import HomeScreen from './src/screens/Citizen Folder/HomeScreen';
-import ReportDisasterScreen from './src/screens/Citizen Folder/ReportDisasterScreen';
+import ReportDisasterScreen from './src/screens/Citizen Folder/IncidentReportScreen'; 
 import PastReportsScreen from './src/screens/Citizen Folder/PastReportsScreen';
 import SOSScreen from './src/screens/Citizen Folder/SOSScreen';
 import ReliefCenterScreen from './src/screens/Citizen Folder/ReliefCenterScreen';
 import EmergencyContactsScreen from './src/screens/Citizen Folder/EmergencyContactsScreen';
 import SafetyTipsScreen from './src/screens/Citizen Folder/SafetyTipsScreen';
-import PredictionAnalyticsScreen from './src/screens/Citizen Folder/PredictionAnalyticsScreen.js';
+import PredictionAnalyticsScreen from './src/screens/Citizen Folder/PredictionAnalyticsScreen';
 import SafeZonesScreen from './src/screens/Citizen Folder/SafeZonesScreen'; 
+
+// Police Folder
 import ResponderDashboard from './src/screens/Police Folder/ResponderDashboard'; 
 import PoliceDashboardScreen from './src/screens/Police Folder/PoliceDashboardScreen';
 import AlertScreen from './src/screens/Police Folder/AlertScreen';
-import RealTimeMapScreen from './src/screens/Police Folder/RealTimeMapScreen.js'; 
+import RealTimeMapScreen from './src/screens/Police Folder/RealTimeMapScreen'; 
 import VolunteerScreen from './src/screens/Police Folder/VolunteerScreen'; 
-import MapScreen from './src/screens/Shared Folder/Map.js';
-import AboutScreen from './src/screens/Shared Folder/AboutScreen';
 
-// --- ACCOUNT & SETTINGS SCREENS ---
+// Shared Folder
+import MapScreen from './src/screens/Shared Folder/Map';
+import AboutScreen from './src/screens/Shared Folder/AboutScreen';
 import AccountScreen from './src/screens/Shared Folder/AccountScreen'; 
 import AccountSettings from './src/screens/Shared Folder/AccountSettings'; 
 import EditProfileScreen from './src/screens/Shared Folder/EditProfileScreen'; 
@@ -42,19 +53,32 @@ import PrivacySettings from './src/screens/Shared Folder/PrivacySettings';
 import SecuritySettings from './src/screens/Shared Folder/SecuritySettings';
 import HelpScreen from './src/screens/Shared Folder/HelpScreen'; 
 
+// Fix Android Animation Warning
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const Stack = createNativeStackNavigator();
+
+// --- NGROK BYPASS UTILITY ---
+// Add this header to your fetch calls globally or in your API service:
+// headers: { "ngrok-skip-browser-warning": "69420" }
 
 function AppNavigator() {
   const { theme } = useContext(ThemeContext);
   const { token, loading, role } = useContext(AuthContext); 
   const isDarkMode = theme === 'dark';
 
-  // Initialize notifications on App Start
   useEffect(() => {
-    if (token) {
-      NotificationService.requestPermissions();
-    }
-  }, [token]);
+    const setupNotifications = async () => {
+      try {
+        await NotificationService.init();
+      } catch (err) {
+        console.log("Notification Init Failed:", err);
+      }
+    };
+    setupNotifications();
+  }, []);
 
   if (loading) {
     return (
@@ -69,11 +93,12 @@ function AppNavigator() {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <Stack.Navigator 
         screenOptions={{ 
-          headerStyle: { backgroundColor: isDarkMode ? '#020617' : '#ffffff' }, 
+          headerStyle: { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' }, 
           headerTintColor: isDarkMode ? '#F1F5F9' : '#0f172a',
           headerTitleStyle: { fontWeight: '800', fontSize: 17 },
           headerShadowVisible: false,
           headerBackTitleVisible: false, 
+          animation: 'fade_from_bottom'
         }}
       >
         {token == null ? (
@@ -94,7 +119,11 @@ function AppNavigator() {
               <Stack.Screen name="Profile" component={ProfileScreen} />
               <Stack.Screen name="AccountMenu" component={AccountScreen} /> 
               <Stack.Screen name="AccountSettings" component={AccountSettings} />
-              <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ presentation: 'modal' }} /> 
+              <Stack.Screen 
+                name="EditProfile" 
+                component={EditProfileScreen} 
+                options={{ presentation: 'modal', headerShown: true, title: 'Edit Profile' }} 
+              /> 
             </Stack.Group>
             
             <Stack.Screen name="Notification" component={NotificationSettings} options={{ title: 'Notifications' }} />
@@ -109,14 +138,15 @@ function AppNavigator() {
                options={{ 
                  title: 'Risk Forecast',
                  headerTransparent: true, 
-                 headerTintColor: '#fff' 
+                 headerTintColor: '#fff',
+                 headerTitleStyle: { fontWeight: '900' }
                }} 
             />
             <Stack.Screen name="Alerts" component={AlertScreen} options={{ title: 'Live Alerts' }} />
             <Stack.Screen name="GeneralMap" component={MapScreen} options={{ title: 'Interactive Map' }} />
             <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} options={{ title: 'Safety Guide' }} />
 
-            <Stack.Screen name="SOSScreen" component={SOSScreen} options={{ title: 'Emergency SOS' }} />
+            <Stack.Screen name="SOSScreen" component={SOSScreen} options={{ title: 'Emergency SOS', headerStyle: { backgroundColor: '#ef4444' }, headerTintColor: '#fff' }} />
             <Stack.Screen name="ReliefCenter" component={ReliefCenterScreen} options={{ title: 'Relief Centers' }} />
             <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My Reports' }} />
             <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} options={{ title: 'Emergency Contacts' }} />

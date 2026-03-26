@@ -19,16 +19,24 @@ export function AuthProvider({ children }) {
           setUser(JSON.parse(savedUser));
           setToken(savedToken);
         } else {
-          // Default mock user if storage is empty (for dev testing)
+          /**
+           * Sambriddhi, since you're in the University testing phase,
+           * we'll keep this auto-login mock active. 
+           * REMOVE THIS for production deployment.
+           */
           const mockUser = {
             id: "2331203", 
             full_name: "Sambriddhi Dawadi",
             email: "sambriddhidawadi@university.edu",
             phone: "+977 98XXXXXXXX",
-            role: "USER", 
+            role: "USER", // Default role
           };
           setUser(mockUser);
-          setToken("fake-dev-token");
+          setToken("dev-session-active");
+          
+          // Silently persist mock data so it survives refreshes
+          await AsyncStorage.setItem('user_data', JSON.stringify(mockUser));
+          await AsyncStorage.setItem('user_token', "dev-session-active");
         }
       } catch (e) {
         console.error("Failed to load auth data", e);
@@ -45,12 +53,14 @@ export function AuthProvider({ children }) {
   const signIn = useCallback(async (userData, userToken) => {
     setLoading(true);
     try {
-      setUser(userData);
-      setToken(userToken);
+      // Always store in AsyncStorage first to ensure data integrity
       await AsyncStorage.setItem('user_data', JSON.stringify(userData));
       await AsyncStorage.setItem('user_token', userToken);
+      
+      setUser(userData);
+      setToken(userToken);
     } catch (e) {
-      console.error("Login Error", e);
+      console.error("Login Persist Error", e);
     } finally {
       setLoading(false);
     }
@@ -59,28 +69,37 @@ export function AuthProvider({ children }) {
   const updateUserProfile = useCallback(async (newData) => {
     try {
       const updatedUser = { ...user, ...newData };
-      setUser(updatedUser);
       await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+      setUser(updatedUser);
       return { success: true };
     } catch (e) {
       console.error("Update Profile Error", e);
-      return { success: false, error: e };
+      return { success: false, error: e.message };
     }
   }, [user]);
 
+  /**
+   * Switch Role: Essential for testing both Citizen and Responder 
+   * views in Safe Nepal without creating two accounts.
+   */
   const switchRole = useCallback(async () => {
     if (!user) return;
     const newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
     const updatedUser = { ...user, role: newRole };
     
-    setUser(updatedUser);
-    await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
-    console.log(`🛡️ Role switched to: ${newRole}`);
+    try {
+      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      console.log(`🛡️ View Switched: Now operating as ${newRole}`);
+    } catch (e) {
+      console.error("Role Switch Error", e);
+    }
   }, [user]);
 
   const signOut = useCallback(async () => {
     setLoading(true);
     try {
+      // multiRemove is more efficient for clearing auth state
       await AsyncStorage.multiRemove(['user_data', 'user_token']);
       setToken(null);
       setUser(null);
@@ -91,6 +110,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // useMemo ensures components only re-render if actual data changes
   const authValue = useMemo(() => ({
     user,
     token,

@@ -11,7 +11,8 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "SafeNepalApp uses your location to show nearby help.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "SafeNepalApp needs background location for emergency tracking.",
-        "NSPhotoLibraryUsageDescription": "Safe Nepal needs access to your photos to let you update your profile picture."
+        "NSPhotoLibraryUsageDescription": "Safe Nepal needs access to your photos to let you update your profile picture.",
+        "NSCameraUsageDescription": "Safe Nepal needs camera access to report disaster evidence in real-time."
       }
     },
     "android": {
@@ -19,17 +20,29 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
         "INTERNET",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "NOTIFICATIONS"
       ]
     },
     "plugins": [
       [
         "expo-location",
         {
+          "locationAlwaysPermission": "Allow Safe Nepal to monitor high-risk zones even when the app is closed.",
           "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#3b82f6",
+          "sounds": []
         }
       ],
       "react-native-maps",

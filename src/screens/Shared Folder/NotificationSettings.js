@@ -4,63 +4,73 @@ import {
   Switch, StatusBar, Platform, Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
+
 import { ThemeContext } from "../../context/ThemeContext";
 import { AuthContext } from "../../context/AuthContext";
-import { NotificationService } from "../../../sharedfolder/NotificationService"; // ✅ Import the service
+import { NotificationService } from "../../screens/Shared Folder/NotificationService";
 
 export default function NotificationSettings({ navigation }) {
-  const { theme, colors } = useContext(ThemeContext);
+  const { colors, isDarkMode } = useContext(ThemeContext);
   const { user, updateUserProfile } = useContext(AuthContext);
-  const isDarkMode = theme === 'dark';
 
-  // Initialize state from user profile if available, otherwise use defaults
+  // Initialize state with safety fallbacks
   const [alerts, setAlerts] = useState({
-    push: user?.notificationSettings?.push ?? false,
-    email: user?.notificationSettings?.email ?? false,
+    push: false,
     disaster: user?.notificationSettings?.disaster ?? true,
     rain: user?.notificationSettings?.rain ?? true,
+    email: user?.notificationSettings?.email ?? false,
     news: user?.notificationSettings?.news ?? false
   });
 
-  // Check actual system permission on mount to keep UI in sync
+  /**
+   * Sync UI with actual device permission status on mount
+   */
   useEffect(() => {
-    const checkPermissions = async () => {
-      const hasPermission = await NotificationService.requestPermissions();
-      setAlerts(prev => ({ ...prev, push: hasPermission }));
+    const syncPermissions = async () => {
+      const { status } = await Notifications.getPermissionsAsync();
+      setAlerts(prev => ({ ...prev, push: status === 'granted' }));
     };
-    checkPermissions();
+    syncPermissions();
   }, []);
 
   const toggleSwitch = async (key) => {
-    const newValue = !alerts[key];
+    let newValue = !alerts[key];
 
-    // ✅ Logic for System Permissions
+    // ✅ Special handling for Master Push Toggle
     if (key === 'push' && newValue) {
-      const granted = await NotificationService.requestPermissions();
+      const granted = await NotificationService.init();
       if (!granted) {
         Alert.alert(
           "Permission Denied",
-          "Please enable notifications in your device settings to receive emergency alerts.",
+          "Please enable notifications in your system settings to receive emergency alerts.",
           [{ text: "OK" }]
         );
-        return; // Don't toggle the switch if permission is denied
+        return;
       }
     }
 
-    // Update Local State
-    const updatedSettings = { ...alerts, [key]: newValue };
-    setAlerts(updatedSettings);
-
-    // ✅ Safety Warning for Disasters
+    // ✅ Safety Warning for critical hazard alerts
     if (key === 'disaster' && !newValue) {
       Alert.alert(
-        "Warning",
-        "Disabling Emergency Alerts is not recommended for your safety in high-risk zones.",
-        [{ text: "I Understand", style: "destructive" }]
+        "Critical Warning",
+        "Disabling Emergency Alerts is highly discouraged. You may miss life-saving warnings for floods or landslides.",
+        [
+          { text: "Keep Enabled", onPress: () => {}, style: "cancel" },
+          { text: "Disable Anyway", onPress: () => finalizeToggle(key, newValue), style: "destructive" }
+        ]
       );
+      return;
     }
 
-    // ✅ Sync with AuthContext/Backend
+    finalizeToggle(key, newValue);
+  };
+
+  const finalizeToggle = (key, value) => {
+    const updatedSettings = { ...alerts, [key]: value };
+    setAlerts(updatedSettings);
+
+    // ✅ Sync to AuthContext (and subsequently AsyncStorage/Backend)
     if (updateUserProfile) {
       updateUserProfile({ notificationSettings: updatedSettings });
     }
@@ -71,14 +81,11 @@ export default function NotificationSettings({ navigation }) {
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       
       {/* HEADER */}
-      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
-          style={styles.backBtn}
-        >
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Notifications</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Alert Preferences</Text>
         <TouchableOpacity style={styles.saveBtn} onPress={() => navigation.goBack()}>
            <Text style={{ color: colors.accent, fontWeight: '700' }}>Done</Text>
         </TouchableOpacity>
@@ -86,20 +93,20 @@ export default function NotificationSettings({ navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
-        <Text style={styles.sectionLabel}>Master Settings</Text>
-        <View style={[styles.cardGroup, { backgroundColor: isDarkMode ? "#0f172a" : "#fff" }]}>
+        <Text style={styles.sectionLabel}>Device Connectivity</Text>
+        <View style={[styles.cardGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <NotificationRow 
             colors={colors} 
             icon="notifications" 
             label="Push Notifications" 
-            detail="Allow app to send alerts to your device"
+            detail="Master toggle for all mobile alerts"
             value={alerts.push}
             onToggle={() => toggleSwitch('push')}
           />
         </View>
 
-        <Text style={styles.sectionLabel}>Disaster Alerts (Nepal Specific)</Text>
-        <View style={[styles.cardGroup, { backgroundColor: isDarkMode ? "#0f172a" : "#fff" }]}>
+        <Text style={styles.sectionLabel}>Hazard & Disaster Alerts</Text>
+        <View style={[styles.cardGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <NotificationRow 
             colors={colors} 
             icon="alert-circle" 
@@ -108,51 +115,53 @@ export default function NotificationSettings({ navigation }) {
             value={alerts.disaster}
             onToggle={() => toggleSwitch('disaster')}
           />
-          <View style={[styles.divider, { backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9" }]} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <NotificationRow 
             colors={colors} 
             icon="rainy" 
-            label="Monsoon Updates" 
-            detail="Landslide and flood risk notifications"
+            label="Monsoon Risk" 
+            detail="Real-time flood and landslide updates"
             value={alerts.rain}
             onToggle={() => toggleSwitch('rain')}
           />
         </View>
 
-        <Text style={styles.sectionLabel}>Communication</Text>
-        <View style={[styles.cardGroup, { backgroundColor: isDarkMode ? "#0f172a" : "#fff" }]}>
+        <Text style={styles.sectionLabel}>Community & Education</Text>
+        <View style={[styles.cardGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <NotificationRow 
             colors={colors} 
             icon="mail" 
-            label="Email Summaries" 
+            label="Safety Summaries" 
             detail="Weekly disaster research & safety tips"
             value={alerts.email}
             onToggle={() => toggleSwitch('email')}
           />
-          <View style={[styles.divider, { backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9" }]} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <NotificationRow 
             colors={colors} 
             icon="megaphone" 
-            label="Safety Workshops" 
-            detail="Notifications for local safety training"
+            label="Local Workshops" 
+            detail="Notifications for safety training sessions"
             value={alerts.news}
             onToggle={() => toggleSwitch('news')}
           />
         </View>
 
         <View style={styles.infoBox}>
-          <Ionicons name="information-circle-outline" size={20} color="#64748b" />
+          <Ionicons name="shield-checkmark-outline" size={20} color={colors.success} />
           <Text style={[styles.infoText, { color: colors.subText }]}>
-            Disabling critical alerts may significantly delay your response time during natural disasters.
+            High-priority alerts use a specialized SARIMAX engine to ensure you receive warnings before a hazard reaches your zone.
           </Text>
         </View>
         
-        {/* Test Trigger for Sambriddhi (Development Only) */}
+        {/* DEBUG: Helper for testing notification sound/visuals */}
         <TouchableOpacity 
           style={styles.testBtn} 
-          onPress={() => NotificationService.triggerDisasterAlert("Test Alert", "This is a test of the Safe Nepal notification engine.")}
+          onPress={() => NotificationService.triggerDisasterAlert("System Test", "The Safe Nepal notification engine is online and operational.")}
         >
-          <Text style={{color: '#64748b', fontSize: 10}}>DEBUG: Send Test Notification</Text>
+          <Text style={{color: colors.subText, fontSize: 10, letterSpacing: 1}}>
+            DEVELOPER: TRIGGER TEST ALERT
+          </Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -160,51 +169,11 @@ export default function NotificationSettings({ navigation }) {
   );
 }
 
-// ... NotificationRow and Styles remain largely the same, added testBtn style ...
-
-const styles = StyleSheet.create({
-  // ... (Your existing styles) ...
-  container: { flex: 1 },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: 20, 
-    paddingTop: Platform.OS === 'ios' ? 60 : 40, 
-    paddingBottom: 20,
-    borderBottomWidth: 1
-  },
-  headerTitle: { fontSize: 18, fontWeight: '800' },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  saveBtn: { width: 50, alignItems: 'flex-end', justifyContent: 'center' },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
-  sectionLabel: { 
-    fontSize: 12, 
-    fontWeight: '800', 
-    color: '#64748b', 
-    marginBottom: 10, 
-    marginTop: 25, 
-    marginLeft: 4, 
-    letterSpacing: 1 
-  },
-  cardGroup: { borderRadius: 20, overflow: 'hidden', elevation: 2, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18 },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  iconBox: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
-  textWrapper: { flex: 1, paddingRight: 10 },
-  rowText: { fontSize: 16, fontWeight: '700' },
-  rowDetail: { fontSize: 12, marginTop: 3, lineHeight: 16 },
-  divider: { height: 1, marginHorizontal: 18 },
-  infoBox: { flexDirection: 'row', marginTop: 30, paddingHorizontal: 20, alignItems: 'center' },
-  infoText: { flex: 1, marginLeft: 10, fontSize: 12, lineHeight: 18 },
-  testBtn: { marginTop: 40, alignSelf: 'center', padding: 10, opacity: 0.5 }
-});
-
 function NotificationRow({ colors, icon, label, detail, value, onToggle }) {
   return (
     <View style={styles.row}>
       <View style={styles.rowLeft}>
-        <View style={[styles.iconBox, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+        <View style={[styles.iconBox, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
           <Ionicons name={icon} size={20} color={colors.accent} />
         </View>
         <View style={styles.textWrapper}>
@@ -221,3 +190,41 @@ function NotificationRow({ colors, icon, label, detail, value, onToggle }) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 20, 
+    paddingTop: Platform.OS === 'ios' ? 60 : 40, 
+    paddingBottom: 20,
+    borderBottomWidth: 1
+  },
+  headerTitle: { fontSize: 18, fontWeight: '900' },
+  backBtn: { width: 40, height: 40, justifyContent: 'center' },
+  saveBtn: { width: 50, alignItems: 'flex-end', justifyContent: 'center' },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
+  sectionLabel: { 
+    fontSize: 11, 
+    fontWeight: '800', 
+    color: '#64748b', 
+    marginBottom: 10, 
+    marginTop: 25, 
+    marginLeft: 4, 
+    textTransform: 'uppercase',
+    letterSpacing: 1.5 
+  },
+  cardGroup: { borderRadius: 24, overflow: 'hidden', borderWidth: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  iconBox: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
+  textWrapper: { flex: 1, paddingRight: 10 },
+  rowText: { fontSize: 16, fontWeight: '700' },
+  rowDetail: { fontSize: 12, marginTop: 4, lineHeight: 16 },
+  divider: { height: 1, marginHorizontal: 20 },
+  infoBox: { flexDirection: 'row', marginTop: 30, paddingHorizontal: 20, alignItems: 'center' },
+  infoText: { flex: 1, marginLeft: 12, fontSize: 12, lineHeight: 18 },
+  testBtn: { marginTop: 50, alignSelf: 'center', padding: 15, opacity: 0.6 }
+});
