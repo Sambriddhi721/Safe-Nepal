@@ -22,9 +22,15 @@ import AlertScreen from './src/screens/Police Folder/AlertScreen';
 import VolunteerScreen from './src/screens/Police Folder/VolunteerScreen';
 
 // --- 📂 SHARED SCREENS ---
-// Important: Ensure this path leads to the new AccountScreen we built!
 import AccountScreen from './src/screens/Shared Folder/AccountScreen'; 
 import AccountSettings from './src/screens/Shared Folder/AccountSettings'; 
+import EditProfileScreen from './src/screens/Shared Folder/EditProfileScreen';
+import BillingScreen from './src/screens/Shared Folder/BillingScreen'; 
+import LinkedAccountsScreen from './src/screens/Shared Folder/LinkedAccountsScreen';
+import PrivacySettings from './src/screens/Shared Folder/PrivacySettings';
+// ✅ NEW SCREEN IMPORTS
+import SecuritySettings from './src/screens/Shared Folder/SecuritySettings';
+import NotificationSettings from './src/screens/Shared Folder/NotificationSettings';
 
 const Stack = createStackNavigator();
 
@@ -33,36 +39,40 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator 
-        key={role} 
-        screenOptions={{ headerShown: false }}
-      >
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
         {token == null ? (
           /* 1. Auth Stack */
           <Stack.Screen name="Login" component={LoginScreen} />
-        ) : role === "RESPONDER" ? (
-          /* 2. Police Mode Stack */
-          <>
-            <Stack.Screen name="ResponderHome" component={ResponderDashboard} />
-            <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} />
-            <Stack.Screen name="AlertScreen" component={AlertScreen} />
-            <Stack.Screen name="SOSList" component={SOSListScreen} />
-            <Stack.Screen name="Volunteer" component={VolunteerScreen} />
-            <Stack.Screen name="Profile" component={AccountScreen} />
-            <Stack.Screen name="AccountSettings" component={AccountSettings} />
-          </>
         ) : (
-          /* 3. Citizen Mode Stack */
           <>
-            <Stack.Screen name="UserHome" component={HomeScreen} />
-            <Stack.Screen name="SOS" component={SOSScreen} />
-            <Stack.Screen name="SOSList" component={SOSListScreen} />
-            <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} />
-            <Stack.Screen name="AddContact" component={AddContactScreen} />
-            {/* Sync this with the item.target in your AccountScreen */}
-            <Stack.Screen name="EmergencyContactsScreen" component={AddContactScreen} />
-            <Stack.Screen name="Profile" component={AccountScreen} />
+            {/* 🟢 COMMON SHARED SCREENS (Always Registered for logged-in users) */}
             <Stack.Screen name="AccountSettings" component={AccountSettings} />
+            <Stack.Screen name="Profile" component={AccountScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="BillingScreen" component={BillingScreen} />
+            <Stack.Screen name="LinkedAccountsScreen" component={LinkedAccountsScreen} />
+            <Stack.Screen name="PrivacySettings" component={PrivacySettings} />
+            <Stack.Screen name="SecuritySettings" component={SecuritySettings} />
+            <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
+            <Stack.Screen name="SOSList" component={SOSListScreen} />
+
+            {/* 🔵 ROLE-BASED SCREENS */}
+            {role === "RESPONDER" ? (
+              <>
+                <Stack.Screen name="ResponderHome" component={ResponderDashboard} />
+                <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} />
+                <Stack.Screen name="AlertScreen" component={AlertScreen} />
+                <Stack.Screen name="Volunteer" component={VolunteerScreen} />
+              </>
+            ) : (
+              <>
+                <Stack.Screen name="UserHome" component={HomeScreen} />
+                <Stack.Screen name="SOS" component={SOSScreen} />
+                <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} />
+                <Stack.Screen name="AddContact" component={AddContactScreen} />
+                <Stack.Screen name="EmergencyContactsScreen" component={AddContactScreen} />
+              </>
+            )}
           </>
         )}
       </Stack.Navigator>

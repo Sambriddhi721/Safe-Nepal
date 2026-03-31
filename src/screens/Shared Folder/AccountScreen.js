@@ -5,127 +5,89 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   ScrollView, 
-  Image, 
-  StatusBar,
-  Platform 
+  Platform,
+  StatusBar 
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext } from '../../context/ThemeContext';
 import { AuthContext } from '../../context/AuthContext';
 
-export default function AccountScreen({ navigation }) {
+export default function AccountSettings({ navigation }) {
   const { colors, theme } = useContext(ThemeContext);
-  const { user, signOut } = useContext(AuthContext);
-  const insets = useSafeAreaInsets();
+  const { user } = useContext(AuthContext); // This data will now update automatically
   const isDarkMode = theme === 'dark';
 
-  // Helper to render navigation rows
-  const MenuRow = ({ icon, title, target, lib = 'Ionicons' }) => {
-    const IconLib = lib === 'MaterialCommunityIcons' ? MaterialCommunityIcons : Ionicons;
-    
-    return (
-      <TouchableOpacity 
-        style={[styles.menuItem, { borderBottomColor: colors.border }]} 
-        onPress={() => navigation.navigate(target)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.menuLeft}>
-          <View style={[styles.iconBox, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-            <IconLib name={icon} size={22} color={colors.primary || '#3b82f6'} />
-          </View>
-          <Text style={[styles.menuTitle, { color: colors.text }]}>{title}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.subText} />
-      </TouchableOpacity>
-    );
-  };
+  const InfoRow = ({ label, value, icon }) => (
+    <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+      <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(59, 130, 246, 0.1)' }]}>
+        <Ionicons name={icon} size={20} color={colors.primary || '#3b82f6'} />
+      </View>
+      <View style={styles.textContainer}>
+        <Text style={[styles.label, { color: colors.subText }]}>{label}</Text>
+        <Text style={[styles.value, { color: colors.text }]}>
+          {value || `Not set`}
+        </Text>
+      </View>
+    </View>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       
+      {/* Header Section */}
+      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={styles.backButton}
+        >
+          <Ionicons name="chevron-back" size={28} color={colors.text} />
+        </TouchableOpacity>
+        
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Personal Details</Text>
+        
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('EditProfile')}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.editLabel, { color: colors.primary || '#3b82f6' }]}>Edit</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 40 }}
+        contentContainerStyle={styles.content}
       >
-        {/* HERO SECTION */}
-        <View style={styles.profileHero}>
-          <View style={styles.avatarContainer}>
-            <Image 
-              source={{ 
-                uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || 'Sambriddhi Dawadi')}&background=3b82f6&color=fff&size=128` 
-              }} 
-              style={styles.avatar} 
-            />
-            <View style={[styles.editIndicator, { borderColor: colors.background }]}>
-              <Ionicons name="shield-checkmark" size={12} color="#fff" />
-            </View>
-          </View>
-          
-          <Text style={[styles.heroName, { color: colors.text }]}>
-            {user?.full_name || "Sambriddhi Dawadi"}
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <InfoRow 
+            label="Full Name" 
+            value={user?.full_name} 
+            icon="person-outline" 
+          />
+          <InfoRow 
+            label="Email Address" 
+            value={user?.email} 
+            icon="mail-outline" 
+          />
+          <InfoRow 
+            label="Phone Number" 
+            value={user?.phone} 
+            icon="call-outline" 
+          />
+          <InfoRow 
+            label="Research Focus / Bio" 
+            value={user?.bio} 
+            icon="document-text-outline" 
+          />
+        </View>
+
+        {/* Security Footer Note */}
+        <View style={styles.footer}>
+          <Ionicons name="shield-checkmark-outline" size={16} color={colors.subText} />
+          <Text style={[styles.footerText, { color: colors.subText }]}>
+            These details help Responders verify your identity during emergencies.
           </Text>
-          
-          <View style={styles.pill}>
-            <MaterialCommunityIcons name="school-outline" size={14} color="#3b82f6" />
-            <Text style={styles.pillText}>Student ID: 2331203</Text>
-          </View>
         </View>
-
-        {/* ACCOUNT & IDENTITY SECTION */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.subText }]}>Account & Identity</Text>
-          <View style={[styles.group, { backgroundColor: colors.card }]}>
-            {/* Navigates to the Personal Details Display screen */}
-            <MenuRow 
-              icon="person-outline" 
-              title="Personal Details" 
-              target="AccountSettings" 
-            />
-            <MenuRow 
-              icon="shield-lock-outline" 
-              title="Password & Security" 
-              target="SecuritySettings" 
-              lib="MaterialCommunityIcons" 
-            />
-            <MenuRow 
-              icon="notifications-outline" 
-              title="Notifications" 
-              target="NotificationSettings" 
-            />
-          </View>
-        </View>
-
-        {/* APP SETTINGS SECTION */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.subText }]}>Preferences</Text>
-          <View style={[styles.group, { backgroundColor: colors.card }]}>
-            <MenuRow 
-              icon="information-circle-outline" 
-              title="About Safe Nepal" 
-              target="About" 
-            />
-            <MenuRow 
-              icon="shield-outline" 
-              title="Privacy Policy" 
-              target="PrivacySettings" 
-            />
-          </View>
-        </View>
-
-        {/* LOGOUT */}
-        <TouchableOpacity 
-          style={[styles.logoutBtn, { backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)' }]} 
-          onPress={signOut}
-        >
-          <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-          <Text style={styles.logoutText}>Sign Out from Device</Text>
-        </TouchableOpacity>
-
-        <Text style={[styles.versionText, { color: colors.subText }]}>
-          Safe Nepal v1.4.2 (Beta)
-        </Text>
       </ScrollView>
     </View>
   );
@@ -133,67 +95,25 @@ export default function AccountScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  profileHero: { alignItems: 'center', marginBottom: 30 },
-  avatarContainer: { position: 'relative' },
-  avatar: { 
-    width: 110, 
-    height: 110, 
-    borderRadius: 55, 
-    borderWidth: 3, 
-    borderColor: '#3b82f6' 
-  },
-  editIndicator: {
-    position: 'absolute',
-    bottom: 5,
-    right: 5,
-    backgroundColor: '#3b82f6',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-  },
-  heroName: { 
-    fontSize: 24, 
-    fontWeight: '900', 
-    marginTop: 15,
-    letterSpacing: -0.5 
-  },
-  pill: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: 'rgba(59, 130, 246, 0.1)', 
-    paddingHorizontal: 14, 
-    paddingVertical: 6, 
-    borderRadius: 20, 
-    marginTop: 10 
-  },
-  pillText: { 
-    color: '#3b82f6', 
-    fontSize: 12, 
-    fontWeight: '700', 
-    marginLeft: 6 
-  },
-  section: { paddingHorizontal: 16, marginTop: 20 },
-  sectionLabel: { 
-    fontSize: 11, 
-    fontWeight: '900', 
-    textTransform: 'uppercase', 
-    marginBottom: 12, 
-    marginLeft: 10, 
-    letterSpacing: 1.5 
-  },
-  group: { borderRadius: 24, overflow: 'hidden' },
-  menuItem: { 
+  header: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    padding: 18, 
+    paddingHorizontal: 20, 
+    paddingBottom: 20 
+  },
+  headerTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  backButton: { width: 40, height: 40, justifyContent: 'center' },
+  editLabel: { fontSize: 16, fontWeight: '800' },
+  content: { padding: 16 },
+  card: { borderRadius: 24, overflow: 'hidden', elevation: 2, shadowOpacity: 0.05 },
+  infoRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 20, 
     borderBottomWidth: 0.5 
   },
-  menuLeft: { flexDirection: 'row', alignItems: 'center' },
-  iconBox: { 
+  iconContainer: { 
     width: 44, 
     height: 44, 
     borderRadius: 14, 
@@ -201,27 +121,26 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     marginRight: 15 
   },
-  menuTitle: { fontSize: 16, fontWeight: '700' },
-  logoutBtn: { 
+  textContainer: { flex: 1 },
+  label: { 
+    fontSize: 11, 
+    fontWeight: '900', 
+    textTransform: 'uppercase', 
+    marginBottom: 4, 
+    letterSpacing: 0.5 
+  },
+  value: { fontSize: 16, fontWeight: '700' },
+  footer: { 
     flexDirection: 'row', 
+    padding: 30, 
     alignItems: 'center', 
-    justifyContent: 'center', 
-    marginTop: 40, 
-    padding: 18, 
-    marginHorizontal: 16, 
-    borderRadius: 22 
+    justifyContent: 'center' 
   },
-  logoutText: { 
-    color: '#ef4444', 
-    fontWeight: '800', 
-    fontSize: 16, 
-    marginLeft: 10 
-  },
-  versionText: {
-    textAlign: 'center',
-    marginTop: 30,
-    fontSize: 12,
-    fontWeight: '600',
-    opacity: 0.6
+  footerText: { 
+    fontSize: 12, 
+    marginLeft: 10, 
+    textAlign: 'center', 
+    lineHeight: 18, 
+    fontWeight: '500' 
   }
 });
