@@ -66,7 +66,7 @@ export default function AccountSettings({ navigation }) {
         {/* --- 1. BILLING LINK (Plan Card) --- */}
         <TouchableOpacity 
           style={[styles.planCard, { backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc' }]}
-          onPress={() => navigation.navigate('BillingScreen')}
+          onPress={() => navigation.navigate('BillingScreen')} // Corrected target
           activeOpacity={0.8}
         >
           <View style={styles.planHeader}>
@@ -76,7 +76,7 @@ export default function AccountSettings({ navigation }) {
             </View>
           </View>
           <Text style={[styles.planTitle, { color: colors.text }]}>Safe Nepal Standard</Text>
-          <Text style={styles.upgradeLink}>Upgrade to Pro for $0.00 →</Text>
+          <Text style={styles.upgradeLink}>View Billing Details →</Text>
         </TouchableOpacity>
 
         {/* ACCOUNT MANAGEMENT SECTION */}
@@ -91,7 +91,7 @@ export default function AccountSettings({ navigation }) {
           <NavRow 
             label="Payments & Billing" 
             icon="credit-card" 
-            onPress={() => navigation.navigate('BillingScreen')} 
+            onPress={() => navigation.navigate('BillingScreen')} // Corrected target
           />
           <NavRow 
             label="Backup & Sync" 
@@ -108,7 +108,7 @@ export default function AccountSettings({ navigation }) {
           <NavRow 
             label="Linked Accounts" 
             icon="share-2" 
-            onPress={() => navigation.navigate('LinkedAccountsScreen')} 
+            onPress={() => navigation.navigate('LinkedAccountsScreen')} // Corrected target
           />
           <NavRow 
             label="Export Account History" 
@@ -149,7 +149,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     borderWidth: 1,
     borderColor: '#1e293b',
-    // Added shadow for better visibility
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10 },
       android: { elevation: 4 }

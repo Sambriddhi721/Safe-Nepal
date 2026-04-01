@@ -6,29 +6,18 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { ThemeContext } from '../../context/ThemeContext';
 
-const INITIAL_MOCK_SOS = [
-  { id: '1', type: 'Flood', location: 'Balkhu, Ward 14', time: '2m ago', severity: 'Critical' },
-  { id: '2', type: 'Landslide', location: 'Nagarkot Road', time: '5m ago', severity: 'High' },
-  { id: '3', type: 'Medical', location: 'Patan Durbar Sq', time: '12m ago', severity: 'Medium' },
-];
-
 export default function PoliceDashboardScreen({ navigation }) {
   const { colors, theme } = useContext(ThemeContext);
   
-  // --- States ---
   const [isAvailable, setIsAvailable] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sosData, setSosData] = useState(INITIAL_MOCK_SOS);
   const [stats, setStats] = useState({ solved: 12, active: INITIAL_MOCK_SOS.length });
 
-  // Update active count whenever data changes
   useEffect(() => {
     setStats(prev => ({ ...prev, active: sosData.length }));
   }, [sosData]);
 
-  // --- Functions ---
-
-  // 1. Respond Logic
   const handleRespond = (item) => {
     if (!isAvailable) {
       Alert.alert("Duty Offline", "Please toggle 'On Duty' to respond to emergencies.");
@@ -43,13 +32,12 @@ export default function PoliceDashboardScreen({ navigation }) {
         { 
           text: "Confirm", 
           onPress: () => {
-            // Remove from list (simulating case assignment)
             setSosData(current => current.filter(sos => sos.id !== item.id));
             setStats(prev => ({ ...prev, solved: prev.solved + 1 }));
             
-            // Real Navigation: Ensure you have a 'Map' or 'Details' screen in your Stack
+            // ✅ FIX: Navigating to the correct name registered in AppNavigator
             if (navigation) {
-              navigation.navigate('EmergencyMap', { emergencyItem: item });
+              navigation.navigate('RealTimeMap', { emergencyItem: item });
             }
           } 
         }
@@ -57,7 +45,6 @@ export default function PoliceDashboardScreen({ navigation }) {
     );
   };
 
-  // 2. Refresh Logic (Simulate API call)
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => {
@@ -66,7 +53,7 @@ export default function PoliceDashboardScreen({ navigation }) {
     }, 1500);
   }, []);
 
-  // 3. Simulated Live Feed (Adds an alert every 45 seconds if On Duty)
+  // Simulating live feed (adds an alert every 45s)
   useEffect(() => {
     let interval;
     if (isAvailable) {
@@ -74,7 +61,7 @@ export default function PoliceDashboardScreen({ navigation }) {
         const newAlert = {
           id: Date.now().toString(),
           type: 'Structural',
-          location: 'New Baneshwor',
+          location: 'New Baneshwor, KTM',
           time: 'Just now',
           severity: 'High'
         };
@@ -83,8 +70,6 @@ export default function PoliceDashboardScreen({ navigation }) {
     }
     return () => clearInterval(interval);
   }, [isAvailable]);
-
-  // --- Components ---
 
   const renderSOSItem = ({ item }) => (
     <TouchableOpacity 
@@ -106,11 +91,11 @@ export default function PoliceDashboardScreen({ navigation }) {
           <Text style={styles.timeText}>{item.time}</Text>
         </View>
         <Text style={[styles.locationText, { color: colors.subText }]}>
-          <Ionicons name="location" size={14} color={colors.subText} /> {item.location}
+          <Ionicons name="location" size={14} color="#ef4444" /> {item.location}
         </Text>
         <View style={styles.respondBtn}>
           <Text style={styles.respondText}>Accept & View Map</Text>
-          <Ionicons name="map-outline" size={16} color="#fff" />
+          <Ionicons name="chevron-forward" size={16} color="#fff" />
         </View>
       </View>
     </TouchableOpacity>
@@ -120,18 +105,17 @@ export default function PoliceDashboardScreen({ navigation }) {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} />
       
-      {/* 1. Functional Settings Button */}
       <View style={styles.header}>
         <View>
-          <Text style={[styles.welcome, { color: colors.subText }]}>OFFICER ID: NP-4412</Text>
+          <Text style={[styles.welcome, { color: '#3b82f6' }]}>OFFICER ID: NP-4412</Text>
           <Text style={[styles.title, { color: colors.text }]}>Responder Portal</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
-          <Ionicons name="settings-outline" size={26} color={colors.text} />
+        {/* ✅ FIX: Navigating to 'AccountSettings' or 'Settings' as registered */}
+        <TouchableOpacity onPress={() => navigation.navigate("AccountSettings")}>
+          <Ionicons name="person-circle-outline" size={32} color={colors.text} />
         </TouchableOpacity>
       </View>
 
-      {/* 2. Functional Duty Toggle */}
       <View style={[
         styles.statusCard, 
         { backgroundColor: isAvailable ? '#10b98115' : '#64748b15', borderWidth: 1, borderColor: isAvailable ? '#10b98140' : '#64748b40' }
@@ -141,33 +125,32 @@ export default function PoliceDashboardScreen({ navigation }) {
             {isAvailable ? "ON DUTY - ACTIVE" : "OFF DUTY"}
           </Text>
           <Text style={{ color: colors.subText, fontSize: 12 }}>
-            {isAvailable ? "Location being tracked..." : "Location hidden"}
+            {isAvailable ? "Broadcasted to nearby SOS..." : "Hidden from emergency list"}
           </Text>
         </View>
         <Switch 
           value={isAvailable} 
           onValueChange={setIsAvailable}
-          trackColor={{ false: "#767577", true: "#10b981" }}
+          trackColor={{ false: "#767577", true: "#bef264" }} // Safe Nepal Green
+          thumbColor={isAvailable ? "#fff" : "#f4f3f4"}
         />
       </View>
 
-      {/* 3. Dynamic Stats Row */}
       <View style={styles.statsRow}>
         <View style={[styles.statBox, { backgroundColor: colors.card }]}>
           <Text style={[styles.statNum, { color: colors.text }]}>{stats.solved}</Text>
-          <Text style={styles.statLabel}>Solved</Text>
+          <Text style={styles.statLabel}>Attended</Text>
         </View>
         <View style={[styles.statBox, { backgroundColor: colors.card }]}>
           <Text style={[styles.statNum, { color: '#ef4444' }]}>
             {isAvailable ? stats.active : 0}
           </Text>
-          <Text style={styles.statLabel}>Live SOS</Text>
+          <Text style={styles.statLabel}>Active SOS</Text>
         </View>
       </View>
 
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Live Emergency Feed</Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency Feed (Nepal)</Text>
       
-      {/* 4. Functional Feed with Refresh */}
       <FlatList
         data={isAvailable ? sosData : []}
         renderItem={renderSOSItem}
@@ -180,11 +163,11 @@ export default function PoliceDashboardScreen({ navigation }) {
           <View style={styles.emptyContainer}>
             <MaterialCommunityIcons 
               name={isAvailable ? "check-circle-outline" : "eye-off-outline"} 
-              size={50} 
+              size={60} 
               color={colors.subText} 
             />
-            <Text style={{ color: colors.subText, marginTop: 10 }}>
-              {isAvailable ? "No active alerts" : "Go on duty to receive alerts"}
+            <Text style={{ color: colors.subText, marginTop: 10, textAlign: 'center' }}>
+              {isAvailable ? "All emergencies currently attended." : "Go on duty to receive real-time\nalerts from Kathmandu Valley."}
             </Text>
           </View>
         }
