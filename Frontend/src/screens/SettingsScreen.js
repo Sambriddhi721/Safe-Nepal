@@ -1,22 +1,22 @@
 import React, { useContext, useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
-  ScrollView, Alert, StatusBar, SafeAreaView
+  ScrollView, Alert, StatusBar, SafeAreaView, Vibration
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from 'expo-haptics';
 
 import { ThemeContext } from "../context/ThemeContext";
-import { AuthContext } from "../context/AuthContext"; 
+import { AuthContext } from "../context/AuthContext";
 import { saveSetting, getSetting } from "../services/dbService";
 
 export default function SettingsScreen({ navigation }) {
   const { theme, toggleTheme, colors } = useContext(ThemeContext);
-  
-  // Destructure signOut and isHelper from AuthContext
-  const { signOut, user, isHelper } = useContext(AuthContext); 
-  
+  const { signOut, user, role, switchRole } = useContext(AuthContext) || {};
+
   const isDark = theme === "dark";
+  const isResponder = role === "RESPONDER" || role === "POLICE";
   const [alertsEnabled, setAlertsEnabled] = useState(false);
 
   useEffect(() => {
@@ -36,151 +36,169 @@ export default function SettingsScreen({ navigation }) {
     await saveSetting('emergency_alerts', value);
   };
 
-  const handleSwitchAccount = () => {
+  const handleRoleSwitch = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Vibration.vibrate(100);
     Alert.alert(
-      "Switch Account",
-      "Are you sure you want to log out and return to the login screen?",
+      "Switching Mode",
+      `Switch to ${isResponder ? "Citizen" : "Police"} Dashboard?`,
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Log Out", 
-          style: "destructive", 
-          onPress: async () => {
-            try {
-              // THE FIX: 
-              // Because your App.js uses {token == null ? <Login /> : <App />},
-              // simply calling signOut() will trigger App.js to re-render.
-              // React Navigation will automatically unmount this screen 
-              // and show the Login screen. No manual navigation.reset needed.
-              if (signOut) {
-                await signOut();
-              }
-            } catch (error) {
-              console.log("Logout Process Error:", error);
-            }
-          } 
-        },
+        { text: "Confirm", onPress: () => switchRole && switchRole() }
       ]
     );
   };
 
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Log Out", style: "destructive", onPress: () => signOut && signOut() }
+    ]);
+  };
+
   return (
     <LinearGradient
-      colors={isDark ? ["#0f2027", "#203a43", "#2c5364"] : ["#f8fafc", "#f1f5f9", "#ffffff"]}
+      colors={isDark ? ["#0f172a", "#1e293b"] : ["#f8fafc", "#f1f5f9"]}
       style={styles.container}
     >
       <SafeAreaView style={{ flex: 1 }}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-        
+
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
-            <View style={{ width: 40 }} /> 
+          {/* PROFILE SECTION */}
+          <View style={styles.profileSection}>
+             <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+                <Text style={styles.avatarText}>
+                   {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('') : "U"}
+                </Text>
+             </View>
+             <Text style={[styles.userName, { color: colors.text }]}>{user?.full_name || "User Name"}</Text>
+             <Text style={styles.userRole}>{isResponder ? "Police Personnel" : "Citizen Account"}</Text>
           </View>
+
+          {/* ACCOUNT MODE SWITCHER */}
+          <Text style={styles.sectionLabel}>Account Mode</Text>
+          <TouchableOpacity 
+            style={[styles.card, { backgroundColor: colors.card, borderColor: isDark ? '#334155' : '#e2e8f0', borderWidth: 1 }]}
+            onLongPress={handleRoleSwitch}
+            delayLongPress={2000}
+          >
+             <View style={styles.row}>
+                <View style={styles.leftSide}>
+                   <View style={[styles.iconBox, { backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
+                      <Ionicons name="shield-checkmark" size={20} color="#22c55e" />
+                   </View>
+                   <View>
+                      <Text style={[styles.label, { color: colors.text }]}>{isResponder ? "Citizen Mode" : "Police Mode"}</Text>
+                      <Text style={styles.subLabel}>Hold 2s to switch roles</Text>
+                   </View>
+                </View>
+                <Ionicons name="finger-print" size={22} color="#22c55e" />
+             </View>
+          </TouchableOpacity>
 
           {/* APPEARANCE */}
           <Text style={styles.sectionLabel}>Appearance</Text>
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <View style={styles.row}>
               <View style={styles.leftSide}>
-                <Ionicons name={isDark ? "moon" : "sunny"} size={20} color={colors.primary} />
-                <Text style={[styles.label, { color: colors.text }]}> Dark Mode</Text>
+                <View style={[styles.iconBox, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                   <Ionicons name={isDark ? "moon" : "sunny"} size={20} color="#3b82f6" />
+                </View>
+                <Text style={[styles.label, { color: colors.text }]}>Dark Mode</Text>
               </View>
               <Switch
                 value={isDark}
                 onValueChange={toggleTheme}
-                thumbColor={isDark ? colors.primary : "#f4f3f4"}
-                trackColor={{ false: "#767577", true: colors.primary }}
+                trackColor={{ false: "#94a3b8", true: "#3b82f6" }}
               />
             </View>
           </View>
 
-          {/* AUTHORITIES PORTAL (Interface 2) */}
-          {isHelper && (
-            <>
-              <Text style={styles.sectionLabel}>Authorized Personnel</Text>
-              <View style={[styles.card, { backgroundColor: colors.card, borderColor: '#3b82f6', borderWidth: 1 }]}>
-                <SettingItem 
-                  icon="shield-account-outline" 
-                  label="Responder Portal" 
-                  labelColor="#3b82f6"
-                  iconColor="#3b82f6"
-                  isMaterial={true}
-                  onPress={() => navigation.navigate('HelperDashboard')} 
-                  colors={colors}
-                />
-              </View>
-            </>
-          )}
-
-          {/* SECURITY & PRIVACY */}
-          <Text style={styles.sectionLabel}>Security & Privacy</Text>
+          {/* PREFERENCES & SECURITY */}
+          <Text style={styles.sectionLabel}>Preferences & Security</Text>
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <View style={[styles.row, styles.border, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-              <View style={styles.leftSide}>
-                <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-                <Text style={[styles.label, { color: colors.text }]}> Emergency Alerts</Text>
-              </View>
-              <Switch
-                value={alertsEnabled}
-                onValueChange={handleToggleAlerts}
-                thumbColor={alertsEnabled ? "#4cd137" : "#f4f3f4"}
-                trackColor={{ false: "#767577", true: "rgba(76, 209, 55, 0.3)" }}
-              />
-            </View>
-
             <SettingItem 
-              icon="lock-closed-outline" 
-              label="Privacy Settings" 
-              colors={colors} 
-              onPress={() => navigation.navigate('PrivacySettings')} 
+               icon="notifications-outline" 
+               label="Notifications" 
+               sub="Alerts, Sounds"
+               onPress={() => navigation.navigate('NotificationSettings')} 
+               colors={colors} 
             />
-            
             <SettingItem 
-              icon="person-outline" 
-              label="Account Settings" 
-              colors={colors} 
-              borderNone 
-              onPress={() => navigation.navigate('AccountSettings')} 
+               icon="lock-closed-outline" 
+               label="Security & 2FA" 
+               sub="Password, Biometrics"
+               onPress={() => navigation.navigate('SecuritySettings')} 
+               colors={colors} 
+            />
+            <SettingItem 
+               icon="shield-outline" 
+               label="Privacy Settings" 
+               sub="Location, Data Sharing"
+               onPress={() => navigation.navigate('PrivacySettings')} 
+               colors={colors} 
             />
           </View>
 
-          {/* LOGOUT BUTTON */}
-          <TouchableOpacity 
-              style={styles.logoutBtn}
-              onPress={handleSwitchAccount} 
-          >
-            <Ionicons name="swap-horizontal-outline" size={20} color="#ff4444" style={{ marginRight: 8 }} />
-            <Text style={styles.logoutText}>Switch Account</Text>
+          {/* PAYMENTS & ACCOUNTS */}
+          <Text style={styles.sectionLabel}>Billing & Links</Text>
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <SettingItem 
+               icon="card-outline" 
+               label="Billing & Payments" 
+               sub="Donations, Subscriptions"
+               onPress={() => navigation.navigate('BillingScreen')} 
+               colors={colors} 
+            />
+            <SettingItem 
+               icon="link-outline" 
+               label="Linked Accounts" 
+               sub="Google, Facebook"
+               borderNone
+               onPress={() => navigation.navigate('LinkedAccountsScreen')} 
+               colors={colors} 
+            />
+          </View>
+
+          {/* LOGOUT */}
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={22} color="#ef4444" />
+            <Text style={styles.logoutText}>Log Out Account</Text>
           </TouchableOpacity>
           
-          <Text style={styles.versionText}>Safe Nepal v1.0.4 | User: {user?.full_name || 'Dev User'}</Text>
+          <Text style={styles.versionText}>Safe Nepal v1.0.4 | ADB Tunnel Active</Text>
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
 }
 
-// Reusable Setting Component
-function SettingItem({ icon, label, labelColor, iconColor, isMaterial, borderNone, onPress, colors }) {
+function SettingItem({ icon, label, sub, borderNone, onPress, colors }) {
   return (
     <TouchableOpacity 
       onPress={onPress}
-      style={[styles.row, !borderNone && styles.border, { borderColor: 'rgba(150,150,150,0.1)' }]}
+      style={[styles.row, !borderNone && styles.border, { borderColor: 'rgba(148, 163, 184, 0.1)' }]}
     >
       <View style={styles.leftSide}>
-        {isMaterial ? (
-          <MaterialCommunityIcons name={icon} size={22} color={iconColor || "#3b82f6"} />
-        ) : (
-          <Ionicons name={icon} size={20} color={iconColor || colors.primary} />
-        )}
-        <Text style={[styles.label, { color: labelColor || colors.text }]}> {label}</Text>
+        <View style={[styles.iconBox, { backgroundColor: 'rgba(59, 130, 246, 0.05)' }]}>
+           <Ionicons name={icon} size={20} color="#3b82f6" />
+        </View>
+        <View>
+           <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+           {sub && <Text style={styles.subLabel}>{sub}</Text>}
+        </View>
       </View>
-      <Ionicons name="chevron-forward" size={18} color="#888" />
+      <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
     </TouchableOpacity>
   );
 }
@@ -188,16 +206,23 @@ function SettingItem({ icon, label, labelColor, iconColor, isMaterial, borderNon
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
-  header: { paddingHorizontal: 20, paddingVertical: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  headerTitle: { fontSize: 22, fontWeight: "800" },
+  header: { paddingHorizontal: 20, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  headerTitle: { fontSize: 20, fontWeight: "800" },
   backBtn: { padding: 5 },
-  card: { marginHorizontal: 20, borderRadius: 20, paddingVertical: 4, marginBottom: 20, overflow: 'hidden' },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 18 },
+  profileSection: { alignItems: 'center', marginVertical: 20 },
+  avatar: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  avatarText: { color: 'white', fontSize: 24, fontWeight: 'bold' },
+  userName: { fontSize: 22, fontWeight: '700' },
+  userRole: { color: '#64748b', fontSize: 14, marginTop: 4 },
+  sectionLabel: { marginHorizontal: 25, marginBottom: 10, color: "#64748b", fontWeight: "800", textTransform: "uppercase", fontSize: 11, letterSpacing: 1.2 },
+  card: { marginHorizontal: 20, borderRadius: 24, marginBottom: 20, overflow: 'hidden' },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16 },
   leftSide: { flexDirection: "row", alignItems: "center" },
-  label: { fontSize: 16, fontWeight: "600", marginLeft: 10 },
+  iconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  label: { fontSize: 16, fontWeight: "700" },
+  subLabel: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
   border: { borderBottomWidth: 1 },
-  sectionLabel: { marginHorizontal: 25, marginBottom: 10, color: "#94a3b8", fontWeight: "700", textTransform: "uppercase", fontSize: 11, letterSpacing: 1 },
-  logoutBtn: { marginTop: 10, marginHorizontal: 20, backgroundColor: "rgba(255, 68, 68, 0.1)", padding: 16, borderRadius: 18, flexDirection: 'row', alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255, 68, 68, 0.3)" },
-  logoutText: { color: "#ff4444", fontWeight: "bold", fontSize: 16 },
+  logoutBtn: { marginTop: 10, marginHorizontal: 20, backgroundColor: "rgba(239, 68, 68, 0.1)", padding: 18, borderRadius: 24, flexDirection: 'row', alignItems: "center", justifyContent: "center" },
+  logoutText: { color: "#ef4444", fontWeight: "800", fontSize: 16, marginLeft: 10 },
   versionText: { textAlign: 'center', color: '#64748b', fontSize: 12, marginTop: 30 }
 });

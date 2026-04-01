@@ -1,5 +1,8 @@
 import React, { createContext, useState, useMemo, useCallback, useEffect } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth, db } from '../firebaseConfig'; // Import your firebase exports
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export const AuthContext = createContext();
 
@@ -8,105 +11,112 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // --- INITIAL LOAD ---
+  // --- FIREBASE AUTH & FIRESTORE SYNC ---
   useEffect(() => {
-    const loadStorageData = async () => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
-        const savedUser = await AsyncStorage.getItem('user_data');
-        const savedToken = await AsyncStorage.getItem('user_token');
-        
-        if (savedUser && savedToken) {
-          setUser(JSON.parse(savedUser));
-          setToken(savedToken);
-        } else {
-          // Mock User for Testing Phase
-          const mockUser = {
-            id: "2331203", 
-            full_name: "Sambriddhi Dawadi",
-            email: "sambriddhidawadi@university.edu",
-            phone: "+977 98XXXXXXXX",
-            bio: "Software Engineering Student | Disaster Risk Analyst",
-            role: "USER", 
-          };
-          setUser(mockUser);
-          setToken("dev-session-active");
+        if (firebaseUser) {
+          // 1. Get the user document from Firestore
+          const userDocRef = doc(db, "users", firebaseUser.uid);
+          const userSnap = await getDoc(userDocRef);
+
+          let userData;
+          if (userSnap.exists()) {
+            userData = { uid: firebaseUser.uid, email: firebaseUser.email, ...userSnap.data() };
+          } else {
+            // Fallback if no Firestore doc exists yet
+            userData = { 
+              uid: firebaseUser.uid, 
+              email: firebaseUser.email, 
+              full_name: firebaseUser.displayName || "New User",
+              role: "USER" 
+            };
+          }
+
+          setUser(userData);
+          setToken(await firebaseUser.getIdToken());
           
-          await AsyncStorage.setItem('user_data', JSON.stringify(mockUser));
-          await AsyncStorage.setItem('user_token', "dev-session-active");
+          // Sync to local storage as a backup
+          await AsyncStorage.setItem('user_data', JSON.stringify(userData));
+        } else {
+          setUser(null);
+          setToken(null);
+          await AsyncStorage.multiRemove(['user_data', 'user_token']);
         }
       } catch (e) {
-        console.error("Failed to load auth data", e);
+        console.error("Auth sync error:", e);
       } finally {
         setLoading(false);
       }
-    };
+    });
 
-    loadStorageData();
+    return unsubscribe;
   }, []);
 
-  // --- UPDATED PROFILE ACTION ---
+  // --- UPDATED PROFILE ACTION (Saves to Firestore) ---
   const updateUserProfile = useCallback(async (formData) => {
+    if (!auth.currentUser) return { success: false, error: "Not authenticated" };
+
     try {
-      // Map form fields to the user object structure
-      const updatedUser = { 
-        ...user, 
-        full_name: formData.name, // Ensure keys match your user object
-        email: formData.email,
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      
+      // Data to be saved
+      const updatedData = { 
+        full_name: formData.name, 
         phone: formData.phone,
-        bio: formData.bio 
+        bio: formData.bio,
+        updatedAt: new Date().toISOString()
       };
 
-      // Persist to local storage
-      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+      // 1. Persist to Firestore Backend
+      await setDoc(userRef, updatedData, { merge: true });
+
+      // 2. Update Global State
+      const newUserState = { ...user, ...updatedData };
+      setUser(newUserState);
+
+      // 3. Update Local Storage cache
+      await AsyncStorage.setItem('user_data', JSON.stringify(newUserState));
       
-      // Update global state
-      setUser(updatedUser);
-      
-      console.log("✅ Profile Persisted Locally");
       return { success: true };
     } catch (e) {
-      console.error("Update Profile Error", e);
+      console.error("Firebase Update Error", e);
       return { success: false, error: e.message };
     }
   }, [user]);
 
   const signIn = useCallback(async (userData, userToken) => {
-    setLoading(true);
-    try {
-      await AsyncStorage.setItem('user_data', JSON.stringify(userData));
-      await AsyncStorage.setItem('user_token', userToken);
-      setUser(userData);
-      setToken(userToken);
-    } catch (e) {
-      console.error("Login Persist Error", e);
-    } finally {
-      setLoading(false);
-    }
+    // In a real Firebase app, signIn is usually handled via auth functions,
+    // but we'll keep this for manual state updates if needed.
+    setUser(userData);
+    setToken(userToken);
+    await AsyncStorage.setItem('user_data', JSON.stringify(userData));
   }, []);
 
   const switchRole = useCallback(async () => {
-    if (!user) return;
+    if (!user || !auth.currentUser) return;
     const newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
-    const updatedUser = { ...user, role: newRole };
     
     try {
-      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      await setDoc(userRef, { role: newRole }, { merge: true });
+      
+      const updatedUser = { ...user, role: newRole };
       setUser(updatedUser);
+      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
     } catch (e) {
       console.error("Role Switch Error", e);
     }
   }, [user]);
 
   const signOut = useCallback(async () => {
-    setLoading(true);
     try {
-      await AsyncStorage.multiRemove(['user_data', 'user_token']);
-      setToken(null);
+      await auth.signOut(); // Firebase sign out
       setUser(null);
+      setToken(null);
+      await AsyncStorage.multiRemove(['user_data', 'user_token']);
     } catch (e) {
       console.error("Logout Error", e);
-    } finally {
-      setLoading(false);
     }
   }, []);
 

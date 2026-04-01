@@ -1,7 +1,15 @@
 import React, { useState, useContext } from "react";
 import { 
-  View, Text, StyleSheet, TextInput, TouchableOpacity, 
-  ScrollView, Alert, ActivityIndicator 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  ScrollView, 
+  Alert, 
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemeContext } from "../../context/ThemeContext";
@@ -9,110 +17,141 @@ import { AuthContext } from "../../context/AuthContext";
 
 export default function EditProfileScreen({ navigation }) {
   const { colors, theme } = useContext(ThemeContext);
-  const { user, updateProfile } = useContext(AuthContext) || {}; // Assuming you'll add updateProfile to context
+  // Using updateUserProfile from our updated AuthContext
+  const { user, updateUserProfile } = useContext(AuthContext); 
   const isDarkMode = theme === 'dark';
 
+  // Initialize state with current user data
+  // Note: Ensure the keys (name, phone, bio) match your context logic
   const [formData, setFormData] = useState({
-    name: "Sambriddhi Dawadi",
-    email: "sambriddhi.d@university.edu",
-    phone: "+977 98XXXXXXXX",
-    bio: "Software Engineering Student | Disaster Risk Analyst"
+    name: user?.full_name || user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    bio: user?.bio || ""
   });
 
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (!formData.name.trim()) {
+      Alert.alert("Validation", "Name cannot be empty.");
+      return;
+    }
+
     setSaving(true);
     try {
-      // Simulate API Call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // If you have an update function in AuthContext, call it here:
-      // await updateProfile(formData);
+      // 1. Call the Firebase-linked function from AuthContext
+      const result = await updateUserProfile(formData);
 
-      Alert.alert("Success", "Profile updated successfully!");
-      navigation.goBack();
+      if (result.success) {
+        Alert.alert("Success", "Profile synced with Safe Nepal Cloud!", [
+          { text: "OK", onPress: () => navigation.goBack() }
+        ]);
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
-      Alert.alert("Error", "Failed to update profile.");
+      console.error("Update Error:", error);
+      Alert.alert("Error", "Failed to sync profile. Please check your internet.");
     } finally {
       setSaving(false);
     }
   };
 
-  const InputField = ({ label, value, onChangeText, keyboardType = "default", multiline = false }) => (
+  const InputField = ({ label, value, onChangeText, keyboardType = "default", multiline = false, editable = true }) => (
     <View style={styles.inputGroup}>
       <Text style={[styles.label, { color: colors.subText }]}>{label}</Text>
       <TextInput
         style={[
           styles.input, 
           { 
-            backgroundColor: isDarkMode ? "#1e293b" : "#f1f5f9", 
-            color: colors.text,
+            backgroundColor: isDarkMode ? "rgba(255,255,255,0.05)" : "#f1f5f9", 
+            color: editable ? colors.text : colors.subText,
             textAlignVertical: multiline ? 'top' : 'center',
-            height: multiline ? 100 : 50
+            height: multiline ? 120 : 55,
+            borderWidth: 1,
+            borderColor: isDarkMode ? "#334155" : "#e2e8f0",
+            opacity: editable ? 1 : 0.6
           }
         ]}
         value={value}
         onChangeText={onChangeText}
         keyboardType={keyboardType}
         multiline={multiline}
-        placeholderTextColor="#64748b"
+        editable={editable}
+        placeholderTextColor="#94a3b8"
       />
     </View>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 50 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} disabled={saving}>
           <Text style={{ color: "#ef4444", fontSize: 16, fontWeight: "600" }}>Cancel</Text>
         </TouchableOpacity>
+        
         <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Profile</Text>
+        
         <TouchableOpacity onPress={handleSave} disabled={saving}>
           {saving ? (
-            <ActivityIndicator size="small" color={colors.accent} />
+            <ActivityIndicator size="small" color={colors.primary || colors.accent} />
           ) : (
-            <Text style={{ color: colors.accent, fontSize: 16, fontWeight: "700" }}>Save</Text>
+            <Text style={{ color: colors.primary || colors.accent, fontSize: 16, fontWeight: "700" }}>Save</Text>
           )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* AVATAR SECTION */}
         <View style={styles.avatarSection}>
-          <View style={[styles.avatarCircle, { backgroundColor: colors.accent }]}>
-             <Ionicons name="camera" size={30} color="#fff" />
+          <View style={[styles.avatarCircle, { backgroundColor: colors.primary || colors.accent }]}>
+             <Ionicons name="person" size={45} color="#fff" />
+             <View style={styles.cameraBadge}>
+                <Ionicons name="camera" size={16} color="#fff" />
+             </View>
           </View>
-          <TouchableOpacity>
-            <Text style={[styles.changePhoto, { color: colors.accent }]}>Change Profile Photo</Text>
-          </TouchableOpacity>
+          <Text style={[styles.emailDisplay, { color: colors.subText }]}>{user?.email}</Text>
         </View>
 
+        {/* FORM FIELDS */}
         <InputField 
           label="Full Name" 
           value={formData.name} 
           onChangeText={(txt) => setFormData({...formData, name: txt})} 
         />
+        
         <InputField 
           label="Email Address" 
           value={formData.email} 
-          keyboardType="email-address"
+          editable={false} // Email usually handled via Firebase Auth re-auth
           onChangeText={(txt) => setFormData({...formData, email: txt})} 
         />
+        
         <InputField 
           label="Phone Number" 
           value={formData.phone} 
           keyboardType="phone-pad"
           onChangeText={(txt) => setFormData({...formData, phone: txt})} 
         />
+        
         <InputField 
           label="Bio / Research Focus" 
           value={formData.bio} 
           multiline={true}
           onChangeText={(txt) => setFormData({...formData, bio: txt})} 
         />
+
+        <View style={{ height: 40 }} /> 
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -123,18 +162,43 @@ const styles = StyleSheet.create({
     justifyContent: "space-between", 
     alignItems: "center", 
     paddingHorizontal: 20, 
-    paddingTop: 60, 
     paddingBottom: 20 
   },
   headerTitle: { fontSize: 18, fontWeight: "800" },
   scrollContent: { padding: 20 },
-  avatarSection: { alignItems: "center", marginBottom: 30 },
+  avatarSection: { alignItems: "center", marginBottom: 35 },
   avatarCircle: { 
-    width: 100, height: 100, borderRadius: 50, 
-    justifyContent: "center", alignItems: "center", marginBottom: 10 
+    width: 100, 
+    height: 100, 
+    borderRadius: 50, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    marginBottom: 12,
+    position: 'relative'
   },
-  changePhoto: { fontWeight: "600", fontSize: 14 },
-  inputGroup: { marginBottom: 20 },
-  label: { fontSize: 12, fontWeight: "700", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 },
-  input: { borderRadius: 12, paddingHorizontal: 15, fontSize: 16 },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: '#3b82f6',
+    padding: 6,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#fff'
+  },
+  emailDisplay: { fontSize: 14, fontWeight: "500" },
+  inputGroup: { marginBottom: 22 },
+  label: { 
+    fontSize: 11, 
+    fontWeight: "800", 
+    marginBottom: 8, 
+    textTransform: "uppercase", 
+    letterSpacing: 1 
+  },
+  input: { 
+    borderRadius: 15, 
+    paddingHorizontal: 16, 
+    fontSize: 16,
+    fontWeight: "500" 
+  },
 });

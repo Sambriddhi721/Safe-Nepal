@@ -49,6 +49,7 @@
     "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
-    "@react-native-community/cli": "^20.1.2"
+    "@react-native-community/cli": "^20.1.2",
+    "expo-module-scripts": "^55.0.2"
   }
 }
