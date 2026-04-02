@@ -16,38 +16,43 @@ import { ThemeContext } from "../../context/ThemeContext";
 
 export default function ProfileScreen({ navigation }) {
   const { signOut, user } = useContext(AuthContext) || {};
-  const { theme, toggleTheme, colors } = useContext(ThemeContext) || {};
+  const { theme, toggleTheme } = useContext(ThemeContext) || {};
   const isDarkMode = theme === 'dark';
   
   const [isSwitching, setIsSwitching] = useState(false);
   const displayName = user?.full_name || "Sambriddhi Dawadi";
 
-  // --- POLICE MODE AUTHENTICATION ---
+  // --- POLICE MODE LOGIC WITH 2S DELAY ---
   const handlePoliceMode = async () => {
-    // Physical feedback
+    // 1. Initial Haptic Warning
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
+    // 2. Biometric Check
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
     if (hasHardware && isEnrolled) {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Authenticate to access Responder Tools',
+        promptMessage: 'Verify Identity for Responder Access',
         fallbackLabel: 'Use Passcode',
       });
 
       if (!result.success) {
-        Alert.alert("Access Denied", "Biometric authentication is required for Police Mode.");
+        Alert.alert("Access Denied", "Biometric authentication failed.");
         return; 
       }
     }
 
-    // Success Animation & Navigation
+    // 3. Start Transition Animation
     setIsSwitching(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+    // 4. 2-Second "Encrypted Session" Delay
     setTimeout(() => {
       setIsSwitching(false);
+      // This navigates to your already created Security/Responder screen
       navigation.navigate("ResponderDashboard"); 
-    }, 1800); 
+    }, 2000); 
   };
 
   // Reusable Setting Row Component
@@ -90,9 +95,9 @@ export default function ProfileScreen({ navigation }) {
       {/* POLICE MODE TRANSITION OVERLAY */}
       {isSwitching && (
         <View style={styles.overlay}>
-          <ActivityIndicator size="large" color="#10b981" />
-          <Text style={styles.overlayText}>Switching to Police Mode...</Text>
-          <Text style={styles.subOverlayText}>ENCRYPTED RESPONDER SESSION</Text>
+          <ActivityIndicator size="large" color="#bef264" />
+          <Text style={styles.overlayText}>Establishing Encrypted Session...</Text>
+          <Text style={styles.subOverlayText}>SWITCHING TO POLICE MODE</Text>
         </View>
       )}
 
@@ -130,7 +135,7 @@ export default function ProfileScreen({ navigation }) {
             <SettingRow 
               icon="notifications" 
               name="Notifications" 
-              subText="Alerts, Flood & Landslide updates" 
+              subText="Flood & Disaster Alert Settings" 
               onPress={() => navigation.navigate("NotificationSettings")} 
               color="#f59e0b"
             />
@@ -138,28 +143,30 @@ export default function ProfileScreen({ navigation }) {
             <SettingRow 
               icon="shield-checkmark" 
               name="Privacy" 
-              subText="Location & Data usage" 
+              subText="Manage Location & Data Permissions" 
               onPress={() => navigation.navigate("PrivacySettings")} 
               color="#10b981"
             />
             <View style={styles.separator} />
             <SettingRow 
-              icon="shield-lock-outline" 
-              lib="MaterialCommunityIcons"
-              name="Security" 
-              subText="Responder Dashboard & Biometrics" 
-              onPress={handlePoliceMode} 
-              color="#ef4444"
-            />
-            <View style={styles.separator} />
-            <SettingRow 
               icon="person" 
               name="Account" 
-              subText="Personal Details & Research Bio" 
+              subText="Personal Details & Research Focus" 
               onPress={() => navigation.navigate("AccountSettings")} 
               color="#6366f1"
             />
           </View>
+
+          {/* POLICE MODE ACTION */}
+          <Text style={styles.sectionHeader}>RESPONDER TOOLS</Text>
+          <TouchableOpacity 
+            style={styles.policeModeBtn} 
+            onPress={handlePoliceMode}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="shield-account" size={24} color="#020617" />
+            <Text style={styles.policeModeBtnText}>Switch to Police Mode</Text>
+          </TouchableOpacity>
 
           {/* SECTION: SUPPORT */}
           <Text style={styles.sectionHeader}>SUPPORT</Text>
@@ -167,15 +174,15 @@ export default function ProfileScreen({ navigation }) {
             <SettingRow 
               icon="help-circle" 
               name="Help & FAQ" 
-              subText="SARIMAX Engine info & support" 
-              onPress={() => { /* Add Help Link */ }} 
+              subText="SARIMAX Predictive Engine Support" 
+              onPress={() => navigation.navigate("Help")} 
               color="#8b5cf6"
             />
             <View style={styles.separator} />
             <SettingRow 
               icon="information-circle" 
               name="About Safe Nepal" 
-              subText="v2.1.0 Beta" 
+              subText="Version 2.1.0 Beta (2026)" 
               onPress={() => navigation.navigate("About")} 
               color="#94a3b8"
             />
@@ -187,7 +194,7 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.logoutText}>Log Out from Device</Text>
           </TouchableOpacity>
 
-          <Text style={styles.footerVersion}>Safe Nepal • 2026</Text>
+          <Text style={styles.footerVersion}>Safe Nepal • Kathmandu, Nepal</Text>
 
         </ScrollView>
       </SafeAreaView>
@@ -197,9 +204,9 @@ export default function ProfileScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   mainWrapper: { flex: 1 },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(2, 6, 23, 0.95)', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(2, 6, 23, 0.98)', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
   overlayText: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 20 },
-  subOverlayText: { color: '#10b981', fontSize: 10, marginTop: 8, letterSpacing: 2, fontWeight: '800' },
+  subOverlayText: { color: '#bef264', fontSize: 10, marginTop: 8, letterSpacing: 2, fontWeight: '800' },
   headerProfile: { flexDirection: 'row', alignItems: 'center', padding: 25, marginBottom: 5 },
   avatar: { width: 70, height: 70, borderRadius: 35, borderWidth: 2, borderColor: '#3b82f6' },
   headerText: { flex: 1, marginLeft: 18 },
@@ -213,6 +220,20 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 16, fontWeight: '700' },
   subLabelText: { fontSize: 12, color: '#64748b', marginTop: 2 },
   separator: { height: 1, backgroundColor: 'rgba(100, 116, 139, 0.1)', marginLeft: 58 },
+  policeModeBtn: { 
+    backgroundColor: '#bef264', 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginHorizontal: 16, 
+    padding: 18, 
+    borderRadius: 22,
+    shadowColor: '#bef264',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5
+  },
+  policeModeBtnText: { color: '#020617', fontWeight: '900', fontSize: 16, marginLeft: 10 },
   logoutAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 40, padding: 18, marginHorizontal: 30, borderRadius: 20, backgroundColor: 'rgba(239, 68, 68, 0.08)' },
   logoutText: { color: '#ef4444', fontWeight: '800', fontSize: 16, marginLeft: 10 },
   footerVersion: { textAlign: 'center', color: '#64748b', fontSize: 11, marginTop: 20, opacity: 0.6 }

@@ -53,16 +53,16 @@ import PrivacySettings from './src/screens/Shared Folder/PrivacySettings';
 import SecuritySettings from './src/screens/Shared Folder/SecuritySettings';
 import HelpScreen from './src/screens/Shared Folder/HelpScreen'; 
 
+// --- NEW IMPORTS: Billing & Linked Accounts ---
+import BillingScreen from './src/screens/Shared Folder/BillingScreen';
+import LinkedAccountsScreen from './src/screens/Shared Folder/LinkedAccountsScreen';
+
 // Fix Android Animation Warning
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 const Stack = createNativeStackNavigator();
-
-// --- NGROK BYPASS UTILITY ---
-// Add this header to your fetch calls globally or in your API service:
-// headers: { "ngrok-skip-browser-warning": "69420" }
 
 function AppNavigator() {
   const { theme } = useContext(ThemeContext);
@@ -102,36 +102,47 @@ function AppNavigator() {
         }}
       >
         {token == null ? (
+          // --- AUTHENTICATION FLOW ---
           <Stack.Group screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />
           </Stack.Group>
         ) : (
-          <>
+          // --- MAIN APPLICATION FLOW ---
+          <Stack.Group>
+            {/* 1. Main Dashboard (Role-based) */}
             <Stack.Screen 
               name="Home" 
               component={role === 'RESPONDER' ? ResponderDashboard : HomeScreen} 
               options={{ headerShown: false }} 
             />
-            
-            <Stack.Group screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="Profile" component={ProfileScreen} />
-              <Stack.Screen name="AccountMenu" component={AccountScreen} /> 
-              <Stack.Screen name="AccountSettings" component={AccountSettings} />
+
+            {/* 2. Profile & Account Settings Hub */}
+            <Stack.Group screenOptions={{ headerShown: true }}>
+              <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
+              <Stack.Screen name="AccountMenu" component={AccountScreen} options={{ title: 'Settings' }} /> 
+              <Stack.Screen name="AccountSettings" component={AccountSettings} options={{ title: 'Manage Account' }} />
+              
+              {/* Added Billing and Linked Accounts screens to the stack */}
+              <Stack.Screen name="BillingScreen" component={BillingScreen} options={{ title: 'Billing & Plans' }} />
+              <Stack.Screen name="LinkedAccountsScreen" component={LinkedAccountsScreen} options={{ title: 'Linked Accounts' }} />
+              
               <Stack.Screen 
                 name="EditProfile" 
                 component={EditProfileScreen} 
-                options={{ presentation: 'modal', headerShown: true, title: 'Edit Profile' }} 
+                options={{ presentation: 'modal', title: 'Edit Profile' }} 
               /> 
             </Stack.Group>
-            
-            <Stack.Screen name="Notification" component={NotificationSettings} options={{ title: 'Notifications' }} />
-            <Stack.Screen name="Privacy" component={PrivacySettings} options={{ title: 'Privacy' }} />
-            <Stack.Screen name="Security" component={SecuritySettings} options={{ title: 'Security' }} />
+
+            {/* 3. Settings Sub-screens */}
+            <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: 'Notifications' }} />
+            <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={{ title: 'Privacy' }} />
+            <Stack.Screen name="SecuritySettings" component={SecuritySettings} options={{ title: 'Security' }} />
             <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Help & FAQ' }} />
             <Stack.Screen name="About" component={AboutScreen} options={{ title: 'About Safe Nepal' }} />
 
+            {/* 4. Core Features */}
             <Stack.Screen 
                name="Analytics" 
                component={PredictionAnalyticsScreen} 
@@ -145,18 +156,28 @@ function AppNavigator() {
             <Stack.Screen name="Alerts" component={AlertScreen} options={{ title: 'Live Alerts' }} />
             <Stack.Screen name="GeneralMap" component={MapScreen} options={{ title: 'Interactive Map' }} />
             <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} options={{ title: 'Safety Guide' }} />
-
-            <Stack.Screen name="SOSScreen" component={SOSScreen} options={{ title: 'Emergency SOS', headerStyle: { backgroundColor: '#ef4444' }, headerTintColor: '#fff' }} />
-            <Stack.Screen name="ReliefCenter" component={ReliefCenterScreen} options={{ title: 'Relief Centers' }} />
-            <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My Reports' }} />
-            <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} options={{ title: 'Emergency Contacts' }} />
-            <Stack.Screen name="NewReport" component={ReportDisasterScreen} options={{ title: 'Report Incident' }} />
             <Stack.Screen name="SafeZones" component={SafeZonesScreen} options={{ title: 'Safe Zones' }} />
+            <Stack.Screen name="ReliefCenter" component={ReliefCenterScreen} options={{ title: 'Relief Centers' }} />
+            <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} options={{ title: 'Emergency Contacts' }} />
+            <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My Reports' }} />
+            <Stack.Screen name="NewReport" component={ReportDisasterScreen} options={{ title: 'Report Incident' }} />
 
+            {/* 5. Emergency Screen */}
+            <Stack.Screen 
+              name="SOSScreen" 
+              component={SOSScreen} 
+              options={{ 
+                title: 'Emergency SOS', 
+                headerStyle: { backgroundColor: '#ef4444' }, 
+                headerTintColor: '#fff' 
+              }} 
+            />
+
+            {/* 6. Police/Responder Specific Screens */}
             <Stack.Screen name="PoliceDashboard" component={PoliceDashboardScreen} options={{ title: 'Force Dashboard' }} />
             <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} options={{ title: 'Live Patrol Map' }} />
             <Stack.Screen name="Volunteer" component={VolunteerScreen} options={{ title: 'Volunteer Coordination' }} />
-          </>
+          </Stack.Group>
         )}
       </Stack.Navigator>
     </NavigationContainer>

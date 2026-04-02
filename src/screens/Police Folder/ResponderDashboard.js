@@ -1,217 +1,223 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { 
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, 
-  StatusBar, ActivityIndicator, Alert, Dimensions 
+  View, Text, StyleSheet, FlatList, TouchableOpacity, 
+  StatusBar, SafeAreaView, Switch, Alert, RefreshControl,
+  ActivityIndicator, Dimensions, ScrollView
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; 
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-// NATIVE MODULES
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Haptics from 'expo-haptics';
 
-// FIREBASE
-import { db } from '../../context/firebaseConfig';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+// Contexts
+import { AuthContext } from "../../context/AuthContext"; 
+import { ThemeContext } from '../../context/ThemeContext';
 
-// CONTEXTS
-import { AuthContext } from '../../context/AuthContext'; 
-import { ThemeContext } from '../../context/ThemeContext'; 
+const { width } = Dimensions.get('window');
+
+// Mock Data for the Nepal Emergency Feed
+const INITIAL_MOCK_SOS = [
+  { id: '1', type: 'Landslide', location: 'Muglin-Narayanghat', time: '2m ago', severity: 'Critical', coordinates: { lat: 27.75, lng: 84.55 } },
+  { id: '2', type: 'Flood', location: 'Balkhu, Kathmandu', time: '5m ago', severity: 'High', coordinates: { lat: 27.68, lng: 85.29 } },
+  { id: '3', type: 'Medical', location: 'Patan Hospital Area', time: '12m ago', severity: 'Medium', coordinates: { lat: 27.67, lng: 85.32 } },
+];
 
 export default function ResponderDashboard({ navigation }) {
   const { user } = useContext(AuthContext) || {};
-  const { isDarkMode } = useContext(ThemeContext) || { isDarkMode: true };
+  const { theme, colors } = useContext(ThemeContext) || { theme: 'dark' };
+  const isDarkMode = theme === 'dark';
 
   // --- STATES ---
-  const [loading, setLoading] = useState(true);
-  const [isSwitching, setIsSwitching] = useState(false); 
-  const [stats, setStats] = useState({ activeSOS: 0, resolved: 8 });
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
+  const [sosData, setSosData] = useState(INITIAL_MOCK_SOS);
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
 
-  // --- 1. REAL-TIME DISPATCH LISTENER ---
+  // Real-time clock for the tactical feel
   useEffect(() => {
-    const sosQuery = query(
-      collection(db, "emergencies"), 
-      where("status", "==", "active")
-    );
-
-    const unsubscribe = onSnapshot(sosQuery, (snapshot) => {
-      setStats(prev => ({ ...prev, activeSOS: snapshot.docs.length }));
-      setLoading(false);
-    }, (error) => {
-      console.warn("Firestore Listener Error:", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  // --- 2. SECURE MODE SWITCHING ---
-  const handleReturnToCitizen = async () => {
-    // Immediate haptic feedback to signal long-press success
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+  // --- ACTIONS ---
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTimeout(() => {
+      setSosData(INITIAL_MOCK_SOS);
+      setRefreshing(false);
+    }, 1500);
+  }, []);
 
-    const hasHardware = await LocalAuthentication.hasHardwareAsync();
-    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-
-    if (hasHardware && isEnrolled) {
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Verify Identity to Terminate Responder Session',
-        fallbackLabel: 'Enter Passcode',
-      });
-
-      if (!result.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        return;
-      }
+  const handleRespond = (item) => {
+    if (!isAvailable) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Duty Offline", "Toggle 'ON DUTY' to accept dispatch calls.");
+      return;
     }
 
-    // Success - Initiate Transition
-    setIsSwitching(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
-    setTimeout(() => {
-      setIsSwitching(false);
-      navigation.navigate('UserHome'); // Returning to Citizen Home
-    }, 1500);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      "Confirm Dispatch",
+      `Route to ${item.type} incident at ${item.location}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Accept", 
+          onPress: () => {
+            setSosData(prev => prev.filter(s => s.id !== item.id));
+            navigation.navigate('RealTimeMap', { emergencyItem: item });
+          } 
+        }
+      ]
+    );
   };
 
-  // --- STYLING ---
-  const themeContainer = { backgroundColor: isDarkMode ? '#0A0E21' : '#f8fafc' };
-  const themeCard = { backgroundColor: isDarkMode ? '#1D2136' : '#ffffff' };
-  const themeText = { color: isDarkMode ? '#FFFFFF' : '#1e293b' };
+  const handleExitResponderMode = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Terminate Encrypted Responder Session',
+    });
 
-  if (loading) {
-    return (
-      <View style={[styles.centered, themeContainer]}>
-        <ActivityIndicator size="large" color="#4D94FF" />
-        <Text style={[styles.loadingText, { color: isDarkMode ? '#94a3b8' : '#64748b' }]}>
-          CONNECTING TO GUARDIAN NETWORK...
-        </Text>
+    if (result.success) {
+      setIsSwitching(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTimeout(() => {
+        setIsSwitching(false);
+        navigation.navigate('UserHome'); // Navigates back to citizen view
+      }, 1800);
+    }
+  };
+
+  // --- RENDER HELPERS ---
+  const renderSOSItem = ({ item }) => (
+    <TouchableOpacity 
+      style={[styles.sosCard, { backgroundColor: isDarkMode ? '#1e293b' : '#fff' }]}
+      onPress={() => handleRespond(item)}
+      activeOpacity={0.8}
+    >
+      <View style={[styles.severityBar, { backgroundColor: item.severity === 'Critical' ? '#ef4444' : '#f59e0b' }]} />
+      <View style={styles.cardInner}>
+        <View style={styles.cardHeader}>
+          <Text style={[styles.cardType, { color: isDarkMode ? '#fff' : '#1e293b' }]}>{item.type} EMERGENCY</Text>
+          <Text style={styles.cardTime}>{item.time}</Text>
+        </View>
+        <Text style={styles.cardLoc}><Ionicons name="location" size={14} color="#ef4444" /> {item.location}</Text>
+        <View style={styles.actionRow}>
+          <View style={styles.badge}><Text style={styles.badgeText}>EN ROUTE: 4m</Text></View>
+          <Text style={styles.respondLink}>TAP TO ACCEPT <Ionicons name="chevron-forward" size={12} /></Text>
+        </View>
       </View>
-    );
-  }
+    </TouchableOpacity>
+  );
 
   return (
-    <SafeAreaView style={[styles.container, themeContainer]}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+    <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? '#020617' : '#f8fafc' }]}>
+      <StatusBar barStyle="light-content" />
       
       {/* SECURITY OVERLAY */}
       {isSwitching && (
         <View style={styles.overlay}>
-          <ActivityIndicator size="large" color="#4D94FF" />
-          <Text style={styles.overlayText}>Switching Modes...</Text>
-          <Text style={styles.subOverlayText}>ENCRYPTION SESSION ENDING</Text>
+          <ActivityIndicator size="large" color="#bef264" />
+          <Text style={styles.overlayText}>Terminating Session...</Text>
+          <Text style={styles.subOverlayText}>RESTORING CITIZEN INTERFACE</Text>
         </View>
       )}
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        
-        {/* HEADER */}
-        <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <View style={styles.logoBadge} />
-            <View>
-              <Text style={[styles.headerTitle, themeText]}>SN-RESPONDER</Text>
-              <View style={styles.statusRow}>
-                <View style={styles.onlineDot} />
-                <Text style={styles.statusText}>ENCRYPTED CHANNEL</Text>
-              </View>
-            </View>
+      {/* TACTICAL HEADER */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.unitId}>UNIT: SN-RESPONDER-{user?.id?.slice(-4).toUpperCase() || "4412"}</Text>
+          <Text style={[styles.timeLabel, { color: isDarkMode ? '#94a3b8' : '#64748b' }]}>{currentTime} • KATHMANDU</Text>
+        </View>
+        <TouchableOpacity onLongPress={handleExitResponderMode} delayLongPress={1500}>
+          <View style={styles.shieldIcon}>
+            <MaterialCommunityIcons name="shield-check" size={28} color="#bef264" />
           </View>
-          
-          <TouchableOpacity 
-            delayLongPress={1500} 
-            onLongPress={handleReturnToCitizen}
-            style={styles.profileBtn}
-          >
-            <Ionicons name="shield-checkmark-circle" size={48} color="#4D94FF" />
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
+      </View>
 
-        {/* OFFICER ID */}
-        <View style={styles.welcomeBox}>
-           <Text style={styles.unitIdText}>UNIT: SN-{user?.id?.slice(-4).toUpperCase() || "4412"}</Text>
-           <Text style={[styles.officerName, themeText]}>Officer {user?.full_name?.split(' ')[0] || "Responder"}</Text>
+      {/* ON-DUTY SWITCH */}
+      <View style={[styles.dutyCard, { backgroundColor: isAvailable ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)' }]}>
+        <View>
+          <Text style={[styles.dutyStatus, { color: isAvailable ? '#10b981' : '#64748b' }]}>
+            {isAvailable ? "● ON DUTY - ACTIVE" : "○ OFF DUTY"}
+          </Text>
+          <Text style={styles.dutySub}>Dispatch visibility is {isAvailable ? "Public" : "Hidden"}</Text>
         </View>
+        <Switch 
+          value={isAvailable} 
+          onValueChange={(val) => {
+            setIsAvailable(val);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          trackColor={{ false: "#334155", true: "#bef264" }}
+        />
+      </View>
 
-        {/* TACTICAL STATS */}
-        <View style={styles.statsRow}>
-          <TouchableOpacity 
-            style={[styles.statBox, themeCard, { borderLeftColor: stats.activeSOS > 0 ? '#ef4444' : '#4D94FF' }]}
-            onPress={() => navigation.navigate('SOSList')}
-          >
-            <Text style={[styles.statNumber, { color: stats.activeSOS > 0 ? '#ef4444' : '#4D94FF' }]}>
-              {stats.activeSOS.toString().padStart(2, '0')}
+      {/* STATS AREA */}
+      <View style={styles.statsRow}>
+        <View style={[styles.statBox, { backgroundColor: isDarkMode ? '#0f172a' : '#fff' }]}>
+          <Text style={styles.statVal}>{sosData.length}</Text>
+          <Text style={styles.statLab}>PENDING</Text>
+        </TouchableOpacity>
+        <View style={[styles.statBox, { backgroundColor: isDarkMode ? '#0f172a' : '#fff' }]}>
+          <Text style={[styles.statVal, { color: '#10b981' }]}>12</Text>
+          <Text style={styles.statLab}>RESOLVED</Text>
+        </View>
+      </View>
+
+      {/* LIVE FEED */}
+      <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1e293b' }]}>LIVE EMERGENCY FEED</Text>
+      
+      <FlatList
+        data={isAvailable ? sosData : []}
+        keyExtractor={item => item.id}
+        renderItem={renderSOSItem}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#bef264" />}
+        ListEmptyComponent={
+          <View style={styles.emptyFeed}>
+            <Ionicons name={isAvailable ? "shield-checkmark" : "eye-off"} size={50} color="#64748b" />
+            <Text style={styles.emptyText}>
+              {isAvailable ? "No active SOS in your vicinity." : "Go On Duty to see nearby alerts."}
             </Text>
-            <Text style={styles.statLabel}>ACTIVE SOS</Text>
-            {stats.activeSOS > 0 && <View style={styles.alertPulse} />}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.statBox, themeCard, { borderLeftColor: '#10b981' }]}
-            onPress={() => navigation.navigate('PastReports')}
-          >
-            <Text style={[styles.statNumber, { color: '#10b981' }]}>{stats.resolved}</Text>
-            <Text style={styles.statLabel}>RESOLVED</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* TOOLS GRID */}
-        <Text style={[styles.sectionTitle, themeText]}>TACTICAL TOOLS</Text>
-        <View style={styles.grid}>
-          <ToolIcon name="radio" label="Live Feed" color="#ef4444" isDark={isDarkMode} onPress={() => navigation.navigate('SOSList')} />
-          <ToolIcon name="map" label="Live Map" color="#4D94FF" isDark={isDarkMode} onPress={() => navigation.navigate('RealTimeMap')} />
-          <ToolIcon name="megaphone" label="Broadcast" color="#f59e0b" isDark={isDarkMode} onPress={() => navigation.navigate('AlertScreen')} />
-          <ToolIcon name="people" label="Volunteers" color="#8b5cf6" isDark={isDarkMode} onPress={() => navigation.navigate('Volunteer')} />
-          <ToolIcon name="document-text" label="Incident Log" color="#06b6d4" isDark={isDarkMode} onPress={() => navigation.navigate('IncidentReport')} />
-          <ToolIcon name="settings" label="Settings" color="#64748b" isDark={isDarkMode} onPress={() => navigation.navigate('AccountSettings')} />
-        </View>
-
-      </ScrollView>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 }
 
-// Reusable Tool Icon Component
-const ToolIcon = ({ name, label, color, isDark, onPress }) => (
-  <TouchableOpacity style={styles.toolItem} onPress={onPress} activeOpacity={0.7}>
-    <View style={[styles.iconCircle, { backgroundColor: isDark ? '#1D2136' : '#ffffff' }]}>
-      <Ionicons name={name} size={28} color={color} />
-    </View>
-    <Text style={[styles.toolLabel, { color: isDark ? '#94a3b8' : '#475569' }]}>{label}</Text>
-  </TouchableOpacity>
-);
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 15, fontSize: 10, letterSpacing: 2, fontWeight: 'bold' },
-  overlay: { 
-    ...StyleSheet.absoluteFillObject, 
-    backgroundColor: 'rgba(2, 6, 23, 0.99)', 
-    justifyContent: 'center', alignItems: 'center', zIndex: 9999 
-  },
-  overlayText: { color: '#fff', fontSize: 20, fontWeight: '800', marginTop: 20 },
-  subOverlayText: { color: '#4D94FF', fontSize: 10, marginTop: 8, letterSpacing: 2, fontWeight: 'bold' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 15 },
-  brandRow: { flexDirection: 'row', alignItems: 'center' },
-  logoBadge: { width: 4, height: 28, backgroundColor: '#4D94FF', borderRadius: 2, marginRight: 10 },
-  headerTitle: { fontSize: 18, fontWeight: '900', letterSpacing: 1 },
-  statusRow: { flexDirection: 'row', alignItems: 'center' },
-  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22c55e', marginRight: 5 },
-  statusText: { fontSize: 8, color: '#8E8E93', fontWeight: 'bold' },
-  welcomeBox: { paddingHorizontal: 20, marginTop: 25 },
-  unitIdText: { color: '#4D94FF', fontWeight: '800', fontSize: 10, letterSpacing: 1.5 },
-  officerName: { fontSize: 34, fontWeight: '900' },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 25, paddingHorizontal: 20 },
-  statBox: { width: '47%', borderRadius: 20, padding: 18, borderLeftWidth: 4, elevation: 3 },
-  statNumber: { fontSize: 36, fontWeight: '900' },
-  statLabel: { color: '#8E8E93', marginTop: 4, fontWeight: '800', fontSize: 10 },
-  alertPulse: { position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' },
-  sectionTitle: { fontSize: 13, fontWeight: '900', marginTop: 35, paddingHorizontal: 20, color: '#4D94FF', letterSpacing: 1 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 15, paddingHorizontal: 15 },
-  toolItem: { width: '33.33%', alignItems: 'center', marginBottom: 20 },
-  iconCircle: { padding: 18, borderRadius: 22, marginBottom: 10, elevation: 2 },
-  toolLabel: { fontSize: 10, fontWeight: '800', textAlign: 'center' },
-  profileBtn: { elevation: 5 }
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
+  overlayText: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginTop: 20 },
+  subOverlayText: { color: '#bef264', fontSize: 10, letterSpacing: 2, marginTop: 5 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, marginTop: 10 },
+  unitId: { color: '#3b82f6', fontWeight: '900', fontSize: 12, letterSpacing: 1 },
+  timeLabel: { fontSize: 18, fontWeight: '800', marginTop: 4 },
+  shieldIcon: { width: 50, height: 50, borderRadius: 15, backgroundColor: '#1e293b', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
+  dutyCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, padding: 15, borderRadius: 20, marginBottom: 20 },
+  dutyStatus: { fontSize: 14, fontWeight: '900' },
+  dutySub: { fontSize: 11, color: '#94a3b8', marginTop: 2 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 25 },
+  statBox: { width: '47%', padding: 15, borderRadius: 20, alignItems: 'center', elevation: 2 },
+  statVal: { fontSize: 24, fontWeight: '900', color: '#ef4444' },
+  statLab: { fontSize: 10, color: '#64748b', fontWeight: 'bold', marginTop: 5 },
+  sectionTitle: { fontSize: 14, fontWeight: '900', marginLeft: 25, marginBottom: 15, letterSpacing: 1 },
+  sosCard: { borderRadius: 20, marginBottom: 15, flexDirection: 'row', overflow: 'hidden', elevation: 4 },
+  severityBar: { width: 6 },
+  cardInner: { flex: 1, padding: 15 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  cardType: { fontSize: 15, fontWeight: '900' },
+  cardTime: { fontSize: 11, color: '#94a3b8' },
+  cardLoc: { fontSize: 13, color: '#64748b', marginTop: 5 },
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
+  badge: { backgroundColor: 'rgba(59, 130, 246, 0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badgeText: { color: '#3b82f6', fontSize: 10, fontWeight: 'bold' },
+  respondLink: { color: '#bef264', fontSize: 11, fontWeight: '900' },
+  emptyFeed: { alignItems: 'center', marginTop: 60, opacity: 0.5 },
+  emptyText: { color: '#94a3b8', marginTop: 10, textAlign: 'center', fontSize: 13 }
 });
