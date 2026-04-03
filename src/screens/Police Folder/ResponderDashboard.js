@@ -14,7 +14,6 @@ import { ThemeContext } from '../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
-// Mock Data for the Nepal Emergency Feed
 const INITIAL_MOCK_SOS = [
   { id: '1', type: 'Landslide', location: 'Muglin-Narayanghat', time: '2m ago', severity: 'Critical', coordinates: { lat: 27.75, lng: 84.55 } },
   { id: '2', type: 'Flood', location: 'Balkhu, Kathmandu', time: '5m ago', severity: 'High', coordinates: { lat: 27.68, lng: 85.29 } },
@@ -23,23 +22,20 @@ const INITIAL_MOCK_SOS = [
 
 export default function ResponderDashboard({ navigation }) {
   const { user } = useContext(AuthContext) || {};
-  const { theme, colors } = useContext(ThemeContext) || { theme: 'dark' };
+  const { theme } = useContext(ThemeContext) || { theme: 'dark' };
   const isDarkMode = theme === 'dark';
 
-  // --- STATES ---
   const [isAvailable, setIsAvailable] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const [sosData, setSosData] = useState(INITIAL_MOCK_SOS);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
 
-  // Real-time clock for the tactical feel
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // --- ACTIONS ---
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -75,7 +71,6 @@ export default function ResponderDashboard({ navigation }) {
 
   const handleExitResponderMode = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: 'Terminate Encrypted Responder Session',
     });
@@ -85,12 +80,11 @@ export default function ResponderDashboard({ navigation }) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => {
         setIsSwitching(false);
-        navigation.navigate('UserHome'); // Navigates back to citizen view
+        navigation.navigate('UserHome'); 
       }, 1800);
     }
   };
 
-  // --- RENDER HELPERS ---
   const renderSOSItem = ({ item }) => (
     <TouchableOpacity 
       style={[styles.sosCard, { backgroundColor: isDarkMode ? '#1e293b' : '#fff' }]}
@@ -116,7 +110,6 @@ export default function ResponderDashboard({ navigation }) {
     <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? '#020617' : '#f8fafc' }]}>
       <StatusBar barStyle="light-content" />
       
-      {/* SECURITY OVERLAY */}
       {isSwitching && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#bef264" />
@@ -125,7 +118,6 @@ export default function ResponderDashboard({ navigation }) {
         </View>
       )}
 
-      {/* TACTICAL HEADER */}
       <View style={styles.header}>
         <View>
           <Text style={styles.unitId}>UNIT: SN-RESPONDER-{user?.id?.slice(-4).toUpperCase() || "4412"}</Text>
@@ -138,7 +130,6 @@ export default function ResponderDashboard({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* ON-DUTY SWITCH */}
       <View style={[styles.dutyCard, { backgroundColor: isAvailable ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)' }]}>
         <View>
           <Text style={[styles.dutyStatus, { color: isAvailable ? '#10b981' : '#64748b' }]}>
@@ -156,19 +147,25 @@ export default function ResponderDashboard({ navigation }) {
         />
       </View>
 
-      {/* STATS AREA */}
+      {/* --- FIXED STATS AREA --- */}
       <View style={styles.statsRow}>
-        <View style={[styles.statBox, { backgroundColor: isDarkMode ? '#0f172a' : '#fff' }]}>
+        <TouchableOpacity 
+          style={[styles.statBox, { backgroundColor: isDarkMode ? '#0f172a' : '#fff' }]}
+          activeOpacity={0.7}
+        >
           <Text style={styles.statVal}>{sosData.length}</Text>
           <Text style={styles.statLab}>PENDING</Text>
         </TouchableOpacity>
-        <View style={[styles.statBox, { backgroundColor: isDarkMode ? '#0f172a' : '#fff' }]}>
+
+        <TouchableOpacity 
+          style={[styles.statBox, { backgroundColor: isDarkMode ? '#0f172a' : '#fff' }]}
+          activeOpacity={0.7}
+        >
           <Text style={[styles.statVal, { color: '#10b981' }]}>12</Text>
           <Text style={styles.statLab}>RESOLVED</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
-      {/* LIVE FEED */}
       <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1e293b' }]}>LIVE EMERGENCY FEED</Text>
       
       <FlatList
