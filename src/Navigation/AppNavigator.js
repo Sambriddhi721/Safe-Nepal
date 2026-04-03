@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext } from 'react';
 import { 
   StatusBar, 
   ActivityIndicator, 
@@ -9,13 +9,12 @@ import {
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // --- Context Providers ---
 import { AuthContext } from './src/context/AuthContext';
 import { ThemeContext } from './src/context/ThemeContext';
 
-// --- 📂 SHARED SCREENS ---
+// --- 📂 SHARED SCREENS (from Shared Folder) ---
 import WelcomeScreen from './src/screens/Shared Folder/WelcomeScreen';
 import LoginScreen from './src/screens/Shared Folder/LoginScreen';
 import SignupScreen from './src/screens/Shared Folder/SignupScreen';
@@ -30,8 +29,9 @@ import SecuritySettings from './src/screens/Shared Folder/SecuritySettings';
 import NotificationSettings from './src/screens/Shared Folder/NotificationSettings';
 import HelpScreen from './src/screens/Shared Folder/HelpScreen';
 import AboutScreen from './src/screens/Shared Folder/AboutScreen';
+import MapScreen from './src/screens/Shared Folder/Map'; // Added based on SS
 
-// --- 📂 CITIZEN SCREENS ---
+// --- 📂 CITIZEN SCREENS (from Citizen Folder) ---
 import HomeScreen from './src/screens/Citizen Folder/HomeScreen';
 import SOSScreen from './src/screens/Citizen Folder/SOSScreen';
 import SOSListScreen from './src/screens/Citizen Folder/SOSListScreen';
@@ -44,8 +44,9 @@ import PredictionAnalyticsScreen from './src/screens/Citizen Folder/PredictionAn
 import ReliefCenterScreen from './src/screens/Citizen Folder/ReliefCenterScreen';
 import ReliefCenterDetails from './src/screens/Citizen Folder/ReliefCenterDetails';
 import SafeZonesScreen from './src/screens/Citizen Folder/SafeZonesScreen';
+import ReportDisasterScreen from './src/screens/Citizen Folder/ReportDisasterScreen'; // Added based on SS
 
-// --- 📂 POLICE / RESPONDER SCREENS ---
+// --- 📂 POLICE / RESPONDER SCREENS (from Police Folder) ---
 import ResponderDashboard from './src/screens/Police Folder/ResponderDashboard';
 import PoliceDashboardScreen from './src/screens/Police Folder/PoliceDashboardScreen';
 import RealTimeMapScreen from './src/screens/Police Folder/RealTimeMapScreen';
@@ -53,6 +54,7 @@ import AlertScreen from './src/screens/Police Folder/AlertScreen';
 import AlertDetailsScreen from './src/screens/Police Folder/AlertDetailsScreen';
 import VolunteerScreen from './src/screens/Police Folder/VolunteerScreen';
 import HelperDashboardScreen from './src/screens/Police Folder/HelperDashboardScreen';
+import PoliceSOSList from './src/screens/Police Folder/SOSList'; // Police specific list
 
 // Fix Android Animation Warning
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -97,7 +99,7 @@ export default function AppNavigator() {
             {/* --- DASHBOARD LOGIC --- */}
             <Stack.Screen 
               name="UserHome" 
-              component={role === 'RESPONDER' ? ResponderDashboard : HomeScreen} 
+              component={role === 'RESPONDER' || role === 'POLICE' ? PoliceDashboardScreen : HomeScreen} 
             />
 
             {/* --- 🔵 CITIZEN FEATURES --- */}
@@ -112,6 +114,7 @@ export default function AppNavigator() {
             <Stack.Screen name="ReliefCenters" component={ReliefCenterScreen} />
             <Stack.Screen name="ReliefCenterDetails" component={ReliefCenterDetails} />
             <Stack.Screen name="SafeZones" component={SafeZonesScreen} />
+            <Stack.Screen name="ReportDisaster" component={ReportDisasterScreen} />
 
             {/* --- 🟡 SHARED / SETTINGS --- */}
             <Stack.Screen name="Profile" component={AccountScreen} />
@@ -124,9 +127,9 @@ export default function AppNavigator() {
             <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
             <Stack.Screen name="Help" component={HelpScreen} />
             <Stack.Screen name="About" component={AboutScreen} />
+            <Stack.Screen name="GeneralMap" component={MapScreen} />
 
             {/* --- 🔴 POLICE / RESPONDER FEATURES --- */}
-            {/* Added explicit name for ResponderDashboard to fix navigation errors */}
             <Stack.Screen name="ResponderDashboard" component={ResponderDashboard} />
             <Stack.Screen name="HelperDashboard" component={HelperDashboardScreen} />
             <Stack.Screen name="PoliceDashboard" component={PoliceDashboardScreen} />
@@ -134,6 +137,7 @@ export default function AppNavigator() {
             <Stack.Screen name="AlertScreen" component={AlertScreen} />
             <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} />
             <Stack.Screen name="Volunteer" component={VolunteerScreen} />
+            <Stack.Screen name="PoliceSOSList" component={PoliceSOSList} />
           </Stack.Group>
         )}
       </Stack.Navigator>

@@ -1,10 +1,10 @@
 import React, { useContext, useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
-  ScrollView, Alert, StatusBar, SafeAreaView, Vibration
+  ScrollView, Alert, StatusBar, SafeAreaView, Vibration, ActivityIndicator
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics';
 
 import { ThemeContext } from "../context/ThemeContext";
@@ -17,7 +17,9 @@ export default function SettingsScreen({ navigation }) {
 
   const isDark = theme === "dark";
   const isResponder = role === "RESPONDER" || role === "POLICE";
+  
   const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false); // Smooth transition state
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -31,20 +33,45 @@ export default function SettingsScreen({ navigation }) {
     loadSettings();
   }, []);
 
-  const handleToggleAlerts = async (value) => {
-    setAlertsEnabled(value);
-    await saveSetting('emergency_alerts', value);
-  };
-
-  const handleRoleSwitch = () => {
+  const handleRoleSwitch = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Vibration.vibrate(100);
+
     Alert.alert(
-      "Switching Mode",
-      `Switch to ${isResponder ? "Citizen" : "Police"} Dashboard?`,
+      "Confirm Mode Switch",
+      `Are you sure you want to switch to ${isResponder ? "Citizen" : "Police"} mode?`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Confirm", onPress: () => switchRole && switchRole() }
+        { 
+          text: "Switch Now", 
+          onPress: async () => {
+            setIsSwitching(true); // Start tactical overlay
+            
+            try {
+              if (switchRole) {
+                // 1. Execute logic in Context
+                await switchRole();
+                
+                // 2. Artificial delay for "Smooth Tactical" feel
+                setTimeout(() => {
+                  setIsSwitching(false);
+                  
+                  // 3. Navigate to appropriate dashboard
+                  if (!isResponder) {
+                    // We were a citizen, now we are a responder
+                    navigation.navigate('PoliceDashboard');
+                  } else {
+                    // We were a responder, now we are a citizen
+                    navigation.navigate('UserHome');
+                  }
+                }, 2000);
+              }
+            } catch (error) {
+              setIsSwitching(false);
+              Alert.alert("Error", "Failed to switch roles.");
+            }
+          } 
+        }
       ]
     );
   };
@@ -63,6 +90,19 @@ export default function SettingsScreen({ navigation }) {
     >
       <SafeAreaView style={{ flex: 1 }}>
         <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+
+        {/* TACTICAL SWITCHING OVERLAY */}
+        {isSwitching && (
+          <View style={[styles.overlay, { backgroundColor: isDark ? '#020617' : '#f8fafc' }]}>
+            <ActivityIndicator size="large" color="#bef264" />
+            <Text style={[styles.overlayText, { color: colors.text }]}>
+              {isResponder ? "Restoring Citizen Interface..." : "Switching to Police Mode"}
+            </Text>
+            <Text style={styles.subOverlayText}>
+              {isResponder ? "DECRYPTING SESSION" : "ENCRYPTING RESPONDER SESSION"}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -85,29 +125,8 @@ export default function SettingsScreen({ navigation }) {
              <Text style={styles.userRole}>{isResponder ? "Police Personnel" : "Citizen Account"}</Text>
           </View>
 
-          {/* ACCOUNT MODE SWITCHER */}
-          <Text style={styles.sectionLabel}>Account Mode</Text>
-          <TouchableOpacity 
-            style={[styles.card, { backgroundColor: colors.card, borderColor: isDark ? '#334155' : '#e2e8f0', borderWidth: 1 }]}
-            onLongPress={handleRoleSwitch}
-            delayLongPress={2000}
-          >
-             <View style={styles.row}>
-                <View style={styles.leftSide}>
-                   <View style={[styles.iconBox, { backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
-                      <Ionicons name="shield-checkmark" size={20} color="#22c55e" />
-                   </View>
-                   <View>
-                      <Text style={[styles.label, { color: colors.text }]}>{isResponder ? "Citizen Mode" : "Police Mode"}</Text>
-                      <Text style={styles.subLabel}>Hold 2s to switch roles</Text>
-                   </View>
-                </View>
-                <Ionicons name="finger-print" size={22} color="#22c55e" />
-             </View>
-          </TouchableOpacity>
-
-          {/* APPEARANCE */}
-          <Text style={styles.sectionLabel}>Appearance</Text>
+          {/* ACCOUNT MODE SWITCHER (Responder Tools at bottom for better UX) */}
+          <Text style={styles.sectionLabel}>Appearance & Preferences</Text>
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <View style={styles.row}>
               <View style={styles.leftSide}>
@@ -122,50 +141,31 @@ export default function SettingsScreen({ navigation }) {
                 trackColor={{ false: "#94a3b8", true: "#3b82f6" }}
               />
             </View>
-          </View>
-
-          {/* PREFERENCES & SECURITY */}
-          <Text style={styles.sectionLabel}>Preferences & Security</Text>
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={styles.divider} />
             <SettingItem 
                icon="notifications-outline" 
                label="Notifications" 
                sub="Alerts, Sounds"
-               onPress={() => navigation.navigate('NotificationSettings')} 
+               onPress={() => {}} 
                colors={colors} 
             />
+          </View>
+
+          <Text style={styles.sectionLabel}>Security</Text>
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
             <SettingItem 
                icon="lock-closed-outline" 
                label="Security & 2FA" 
                sub="Password, Biometrics"
-               onPress={() => navigation.navigate('SecuritySettings')} 
+               onPress={() => {}} 
                colors={colors} 
             />
             <SettingItem 
                icon="shield-outline" 
                label="Privacy Settings" 
                sub="Location, Data Sharing"
-               onPress={() => navigation.navigate('PrivacySettings')} 
-               colors={colors} 
-            />
-          </View>
-
-          {/* PAYMENTS & ACCOUNTS */}
-          <Text style={styles.sectionLabel}>Billing & Links</Text>
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <SettingItem 
-               icon="card-outline" 
-               label="Billing & Payments" 
-               sub="Donations, Subscriptions"
-               onPress={() => navigation.navigate('BillingScreen')} 
-               colors={colors} 
-            />
-            <SettingItem 
-               icon="link-outline" 
-               label="Linked Accounts" 
-               sub="Google, Facebook"
                borderNone
-               onPress={() => navigation.navigate('LinkedAccountsScreen')} 
+               onPress={() => {}} 
                colors={colors} 
             />
           </View>
@@ -175,8 +175,29 @@ export default function SettingsScreen({ navigation }) {
             <Ionicons name="log-out-outline" size={22} color="#ef4444" />
             <Text style={styles.logoutText}>Log Out Account</Text>
           </TouchableOpacity>
+
+          <View style={{ marginVertical: 10 }} />
+
+          {/* RESPONDER TOOLS - THE SWITCHER */}
+          <Text style={styles.sectionLabel}>Specialized Tools</Text>
+          <TouchableOpacity 
+            style={[styles.switchModeBtn, { backgroundColor: isResponder ? "#334155" : "#bef264" }]}
+            onPress={handleRoleSwitch}
+            activeOpacity={0.8}
+          >
+            <View style={styles.switchBtnContent}>
+               <Ionicons 
+                  name={isResponder ? "person-outline" : "shield-half"} 
+                  size={20} 
+                  color={isResponder ? "#fff" : "#0f172a"} 
+               />
+               <Text style={[styles.switchModeText, { color: isResponder ? "#fff" : "#0f172a" }]}>
+                  {isResponder ? "Switch to Citizen Mode" : "Switch to Police Mode"}
+               </Text>
+            </View>
+          </TouchableOpacity>
           
-          <Text style={styles.versionText}>Safe Nepal v1.0.4 | ADB Tunnel Active</Text>
+          <Text style={styles.versionText}>Safe Nepal v1.0.4 | Secure Session</Text>
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -205,6 +226,9 @@ function SettingItem({ icon, label, sub, borderNone, onPress, colors }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
+  overlayText: { fontSize: 18, fontWeight: 'bold', marginTop: 20 },
+  subOverlayText: { color: '#84cc16', fontSize: 10, letterSpacing: 2, marginTop: 5, fontWeight: '700' },
   scrollContent: { paddingBottom: 40 },
   header: { paddingHorizontal: 20, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   headerTitle: { fontSize: 20, fontWeight: "800" },
@@ -222,7 +246,11 @@ const styles = StyleSheet.create({
   label: { fontSize: 16, fontWeight: "700" },
   subLabel: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
   border: { borderBottomWidth: 1 },
-  logoutBtn: { marginTop: 10, marginHorizontal: 20, backgroundColor: "rgba(239, 68, 68, 0.1)", padding: 18, borderRadius: 24, flexDirection: 'row', alignItems: "center", justifyContent: "center" },
+  divider: { height: 1, backgroundColor: 'rgba(148, 163, 184, 0.1)', marginLeft: 68 },
+  logoutBtn: { marginHorizontal: 20, backgroundColor: "rgba(239, 68, 68, 0.1)", padding: 18, borderRadius: 24, flexDirection: 'row', alignItems: "center", justifyContent: "center" },
   logoutText: { color: "#ef4444", fontWeight: "800", fontSize: 16, marginLeft: 10 },
+  switchModeBtn: { marginHorizontal: 20, paddingVertical: 20, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 4, shadowOpacity: 0.2 },
+  switchBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  switchModeText: { fontWeight: "900", fontSize: 16 },
   versionText: { textAlign: 'center', color: '#64748b', fontSize: 12, marginTop: 30 }
 });

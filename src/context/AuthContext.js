@@ -7,16 +7,16 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // --- 🛠️ MODIFIED FOR BYPASSING LOGIN ---
-  // We initialize with a "Mock User" so the AppNavigator skips Login
+  // --- 🛠️ BYPASS LOGIN / MOCK USER ---
+  // Initial state allows the AppNavigator to skip the login screen during development
   const [user, setUser] = useState({
     uid: "mock-user-123",
     email: "test@safenepal.com",
     full_name: "Test Citizen",
-    role: "USER" // Change to "RESPONDER" to test the Police side
+    role: "USER" // Set to "RESPONDER" to start in Police Mode
   });
   const [token, setToken] = useState("mock-token-abc");
-  const [loading, setLoading] = useState(false); // Set to false immediately
+  const [loading, setLoading] = useState(false); 
 
   // --- FIREBASE AUTH & FIRESTORE SYNC ---
   useEffect(() => {
@@ -42,11 +42,8 @@ export function AuthProvider({ children }) {
           setToken(await firebaseUser.getIdToken());
           await AsyncStorage.setItem('user_data', JSON.stringify(userData));
         } else {
-          // COMMENTED OUT: We don't want to clear our mock user if Firebase isn't authed
-          /* setUser(null);
-          setToken(null);
-          await AsyncStorage.multiRemove(['user_data', 'user_token']);
-          */
+          // Note: Mock user logic remains intact if Firebase is not authenticated
+          console.log("No Firebase user detected; staying in Mock Mode.");
         }
       } catch (e) {
         console.error("Auth sync error:", e);
@@ -58,10 +55,40 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  /**
+   * SWITCH ROLE LOGIC
+   * Updates Firestore if connected, updates local state immediately for UI response.
+   */
+  const switchRole = useCallback(async () => {
+    if (!user) return;
+    
+    const newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
+    
+    try {
+      // 1. Update Firebase if a real user session exists
+      if (auth.currentUser) {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        await setDoc(userRef, { role: newRole }, { merge: true });
+      }
+
+      // 2. Update local state & storage (Crucial for the Settings Screen navigation)
+      const updatedUser = { ...user, role: newRole };
+      setUser(updatedUser);
+      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+      
+      return true; // Signal success to the caller
+    } catch (e) {
+      console.error("Role Switch Error:", e);
+      throw e;
+    }
+  }, [user]);
+
+  /**
+   * UPDATE PROFILE LOGIC
+   */
   const updateUserProfile = useCallback(async (formData) => {
-    // If we are using a mock user, we can't save to Firebase easily
     if (!auth.currentUser) {
-       console.warn("Using Mock User: Profile update only saved locally.");
+       console.warn("Mock Mode: Saving profile locally only.");
        const newUserState = { ...user, full_name: formData.name, phone: formData.phone };
        setUser(newUserState);
        return { success: true };
@@ -93,25 +120,6 @@ export function AuthProvider({ children }) {
     await AsyncStorage.setItem('user_data', JSON.stringify(userData));
   }, []);
 
-  const switchRole = useCallback(async () => {
-    if (!user) return;
-    const newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
-    
-    // If logged in to Firebase, update DB. If mock, just update state.
-    if (auth.currentUser) {
-      try {
-        const userRef = doc(db, "users", auth.currentUser.uid);
-        await setDoc(userRef, { role: newRole }, { merge: true });
-      } catch (e) {
-        console.error("Role Switch Error", e);
-      }
-    }
-
-    const updatedUser = { ...user, role: newRole };
-    setUser(updatedUser);
-    await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
-  }, [user]);
-
   const signOut = useCallback(async () => {
     try {
       await auth.signOut();
@@ -123,6 +131,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // useMemo optimizes performance by only recalculating when state changes
   const authValue = useMemo(() => ({
     user,
     token,

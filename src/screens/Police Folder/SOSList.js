@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  ActivityIndicator, StatusBar, Linking 
+  ActivityIndicator, StatusBar, Linking, Alert 
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
+import * as Haptics from 'expo-haptics';
 import { getDistance } from 'geolib';
 
 // FIREBASE
@@ -15,8 +16,9 @@ import { ThemeContext } from '../../context/ThemeContext';
 import { AuthContext } from '../../context/AuthContext';
 
 export default function SOSList({ navigation }) {
-  const { isDarkMode } = useContext(ThemeContext);
+  const { theme } = useContext(ThemeContext);
   const { user } = useContext(AuthContext);
+  const isDarkMode = theme === 'dark';
   
   const [loading, setLoading] = useState(true);
   const [emergencies, setEmergencies] = useState([]);
@@ -27,7 +29,7 @@ export default function SOSList({ navigation }) {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
-      let location = await Location.getCurrentPositionAsync({});
+      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setUserLocation(location.coords);
     })();
   }, []);
@@ -45,8 +47,11 @@ export default function SOSList({ navigation }) {
         ...doc.data()
       }));
       
-      // Sort by newest first
-      setEmergencies(items.sort((a, b) => b.timestamp - a.timestamp));
+      // Sort by newest first (assuming you have a server timestamp)
+      setEmergencies(items.sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds));
+      setLoading(false);
+    }, (error) => {
+      console.error("Firebase Snapshot Error:", error);
       setLoading(false);
     });
 
@@ -55,95 +60,132 @@ export default function SOSList({ navigation }) {
 
   // 3. Handle Dispatch / Accept SOS
   const handleRespond = async (item) => {
-    try {
-      const docRef = doc(db, "emergencies", item.id);
-      await updateDoc(docRef, {
-        status: "responding",
-        responderId: user.uid,
-        responderName: user.full_name
-      });
-      // Navigate to a dedicated map tracking screen
-      navigation.navigate('RealTimeMap', { emergencyId: item.id, victimLocation: item.location });
-    } catch (error) {
-      console.error(error);
-    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    
+    Alert.alert(
+      "CONFIRM DISPATCH",
+      `Initialize emergency response for ${item.userName || 'Unknown'}?`,
+      [
+        { text: "ABORT", style: "cancel" },
+        { 
+          text: "RESPOND NOW", 
+          onPress: async () => {
+            try {
+              const docRef = doc(db, "emergencies", item.id);
+              await updateDoc(docRef, {
+                status: "responding",
+                responderId: user?.uid || 'anonymous',
+                responderName: user?.full_name || 'Field Unit'
+              });
+              
+              navigation.navigate('RealTimeMap', { 
+                emergencyId: item.id, 
+                victimLocation: item.location,
+                victimName: item.userName 
+              });
+            } catch (error) {
+              Alert.alert("Error", "Failed to update emergency status.");
+              console.error(error);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const renderItem = ({ item }) => {
-    // Calculate distance if coordinates exist
-    let distance = "Scanning...";
-    if (userLocation && item.location) {
+    let distanceStr = "Distance Pending...";
+    if (userLocation && item.location?.latitude) {
       const d = getDistance(
         { latitude: userLocation.latitude, longitude: userLocation.longitude },
         { latitude: item.location.latitude, longitude: item.location.longitude }
       );
-      distance = (d / 1000).toFixed(1) + " km away";
+      distanceStr = (d / 1000).toFixed(1) + " KM AWAY";
     }
 
+    const severityColor = item.type === 'Medical' ? '#ef4444' : '#f59e0b';
+
     return (
-      <View style={[styles.sosCard, { backgroundColor: isDarkMode ? '#1D2136' : '#fff' }]}>
-        <View style={styles.cardHeader}>
-          <View style={[styles.typeBadge, { backgroundColor: item.type === 'Medical' ? '#ef4444' : '#f59e0b' }]}>
-            <Text style={styles.typeText}>{item.type?.toUpperCase() || 'EMERGENCY'}</Text>
+      <View style={[styles.sosCard, { backgroundColor: isDarkMode ? '#1e293b' : '#fff' }]}>
+        <View style={[styles.severityBar, { backgroundColor: severityColor }]} />
+        
+        <View style={styles.cardInner}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.typeBadge, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+              <Text style={[styles.typeText, { color: severityColor }]}>
+                {item.type?.toUpperCase() || 'EMERGENCY'}
+              </Text>
+            </View>
+            <Text style={styles.timeText}>{distanceStr}</Text>
           </View>
-          <Text style={styles.timeText}>{distance}</Text>
-        </View>
 
-        <View style={styles.victimInfo}>
-          <Ionicons name="person" size={16} color="#4D94FF" />
-          <Text style={[styles.victimName, { color: isDarkMode ? '#fff' : '#000' }]}>
-            {item.userName || "Anonymous User"}
+          <View style={styles.victimInfo}>
+            <MaterialCommunityIcons name="account-alert" size={20} color="#3b82f6" />
+            <Text style={[styles.victimName, { color: isDarkMode ? '#fff' : '#0f172a' }]}>
+              {item.userName || "Unknown Victim"}
+            </Text>
+          </View>
+
+          <Text style={[styles.description, { color: isDarkMode ? '#94a3b8' : '#64748b' }]} numberOfLines={2}>
+            {item.description || "No voice/text details. Proceeding with emergency protocols."}
           </Text>
-        </View>
 
-        <Text style={styles.description} numberOfLines={2}>
-          {item.description || "No additional details provided. Proceed with caution."}
-        </Text>
+          <View style={styles.actionRow}>
+            <TouchableOpacity 
+              style={[styles.callBtn, { borderColor: isDarkMode ? '#334155' : '#e2e8f0' }]} 
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                Linking.openURL(`tel:${item.userPhone}`);
+              }}
+            >
+              <Ionicons name="call" size={22} color="#10b981" />
+            </TouchableOpacity>
 
-        <View style={styles.actionRow}>
-          <TouchableOpacity 
-            style={styles.callBtn} 
-            onPress={() => Linking.openURL(`tel:${item.userPhone}`)}
-          >
-            <Ionicons name="call" size={20} color="#10b981" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.respondBtn}
-            onPress={() => handleRespond(item)}
-          >
-            <Text style={styles.respondBtnText}>RESPOND NOW</Text>
-            <Ionicons name="chevron-forward" size={18} color="#fff" />
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.respondBtn}
+              onPress={() => handleRespond(item)}
+            >
+              <Text style={styles.respondBtnText}>INITIALIZE RESPONSE</Text>
+              <Ionicons name="shield-checkmark" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? '#0A0E21' : '#f8fafc' }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? '#020617' : '#f8fafc' }]}>
       <StatusBar barStyle="light-content" />
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={isDarkMode ? "#fff" : "#000"} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backCircle}>
+          <Ionicons name="chevron-back" size={24} color={isDarkMode ? "#fff" : "#000"} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: isDarkMode ? '#fff' : '#000' }]}>LIVE DISPATCH</Text>
-        <View style={styles.liveDot} />
+        <View style={styles.headerTextGroup}>
+          <Text style={[styles.headerTitle, { color: isDarkMode ? '#fff' : '#000' }]}>Tactical Feed</Text>
+          <View style={styles.liveIndicator}>
+            <View style={styles.pulseDot} />
+            <Text style={styles.liveText}>LIVE BROADCAST</Text>
+          </View>
+        </View>
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#4D94FF" style={{ marginTop: 50 }} />
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#bef264" />
+          <Text style={{ color: '#64748b', marginTop: 15, fontWeight: '800' }}>SYNCING WITH DISPATCH...</Text>
+        </View>
       ) : (
         <FlatList
           data={emergencies}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: 20 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="shield-check" size={80} color="#10b981" />
-              <Text style={styles.emptyText}>Area Secure. No active SOS.</Text>
+              <MaterialCommunityIcons name="shield-check-outline" size={80} color="#334155" />
+              <Text style={styles.emptyText}>Sector Secure. No Pending Alerts.</Text>
             </View>
           }
         />
@@ -154,21 +196,32 @@ export default function SOSList({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 20 },
-  headerTitle: { fontSize: 22, fontWeight: '900', marginLeft: 15, letterSpacing: 1 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444', marginLeft: 10 },
-  sosCard: { borderRadius: 20, padding: 20, marginBottom: 15, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  typeBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
-  typeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-  timeText: { color: '#64748b', fontSize: 12, fontWeight: '700' },
-  victimInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  victimName: { marginLeft: 8, fontSize: 16, fontWeight: '700' },
-  description: { color: '#94a3b8', fontSize: 13, lineHeight: 18, marginBottom: 20 },
-  actionRow: { flexDirection: 'row', gap: 10 },
-  callBtn: { width: 50, height: 50, borderRadius: 15, backgroundColor: 'rgba(16, 185, 129, 0.1)', justifyContent: 'center', alignItems: 'center' },
-  respondBtn: { flex: 1, height: 50, backgroundColor: '#4D94FF', borderRadius: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
-  respondBtnText: { color: '#fff', fontWeight: '900', fontSize: 14 },
-  emptyState: { alignItems: 'center', marginTop: 100 },
-  emptyText: { color: '#64748b', marginTop: 20, fontWeight: '700' }
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 20, marginBottom: 10 },
+  backCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(148, 163, 184, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  headerTextGroup: { marginLeft: 15 },
+  headerTitle: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
+  liveIndicator: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  pulseDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#ef4444', marginRight: 6 },
+  liveText: { color: '#ef4444', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  
+  sosCard: { borderRadius: 24, marginBottom: 16, flexDirection: 'row', overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8 },
+  severityBar: { width: 6 },
+  cardInner: { flex: 1, padding: 20 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  typeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  timeText: { color: '#3b82f6', fontSize: 11, fontWeight: '900' },
+  
+  victimInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  victimName: { marginLeft: 10, fontSize: 18, fontWeight: '700' },
+  description: { fontSize: 13, lineHeight: 18, marginBottom: 20, fontWeight: '500' },
+  
+  actionRow: { flexDirection: 'row', gap: 12 },
+  callBtn: { width: 54, height: 54, borderRadius: 18, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  respondBtn: { flex: 1, height: 54, backgroundColor: '#3b82f6', borderRadius: 18, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
+  respondBtnText: { color: '#fff', fontWeight: '900', fontSize: 13, letterSpacing: 1 },
+  
+  emptyState: { alignItems: 'center', marginTop: 120 },
+  emptyText: { color: '#475569', marginTop: 20, fontWeight: '800', fontSize: 16 }
 });

@@ -1,31 +1,24 @@
 import React from "react";
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Dimensions, 
-  SafeAreaView,
-  Platform 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
+  Dimensions, SafeAreaView, Platform, StatusBar 
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
-import SafeMapView from "../../components/SafeMapView"; // Ensure this path is correct
+import SafeMapView from "../../components/SafeMapView";
 
 const { width } = Dimensions.get("window");
 
 export default function AlertDetailsScreen({ route, navigation }) {
-  // Capture the data passed from the AlertScreen list
   const { alert } = route.params || {};
 
-  // Fallback if no data is passed to prevent crashes
   if (!alert) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>No Alert Data Found</Text>
+      <View style={styles.errorBox}>
+        <MaterialIcons name="error-outline" size={80} color="#FF4D4D" />
+        <Text style={styles.errorText}>Detailed intel unavailable.</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={{ color: '#fff' }}>Go Back</Text>
+          <Text style={styles.backBtnText}>Back to Monitor</Text>
         </TouchableOpacity>
       </View>
     );
@@ -34,219 +27,157 @@ export default function AlertDetailsScreen({ route, navigation }) {
   const isActive = alert.status === "Active";
 
   return (
-    <LinearGradient colors={["#0f2027", "#203a43", "#2c5364"]} style={styles.container}>
-      {/* Header */}
-      <SafeAreaView style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconCircle}>
-            <Ionicons name="arrow-back" size={22} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Alert Details</Text>
-          <TouchableOpacity style={styles.iconCircle}>
-            <Ionicons name="share-social-outline" size={22} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Map Section */}
-        <View style={styles.mapContainer}>
+    <View style={styles.mainContainer}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+        
+        {/* Map Header */}
+        <View style={styles.mapHero}>
           <SafeMapView
             style={styles.map}
             region={{
               latitude: alert.lat || 27.7172, 
               longitude: alert.lng || 85.324,
-              latitudeDelta: 0.05,
-              longitudeDelta: 0.05,
+              latitudeDelta: 0.015,
+              longitudeDelta: 0.015,
             }}
           />
-          <View style={styles.mapOverlay}>
-            <Ionicons name="location" size={16} color="#ff4d4d" />
-            <Text style={styles.locationTag}>{alert.location}</Text>
+          <LinearGradient colors={["rgba(15,32,39,0.9)", "transparent"]} style={styles.topNavOverlay}>
+            <SafeAreaView style={styles.navHeader}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.blurCircle}>
+                <Ionicons name="chevron-back" size={24} color="#fff" />
+              </TouchableOpacity>
+              <Text style={styles.navTitle}>SITUATION REPORT</Text>
+              <TouchableOpacity style={styles.blurCircle}>
+                <Ionicons name="share-social" size={22} color="#fff" />
+              </TouchableOpacity>
+            </SafeAreaView>
+          </LinearGradient>
+          
+          <View style={styles.locationFloat}>
+            <Ionicons name="location-sharp" size={18} color="#FF4D4D" />
+            <Text style={styles.locationFloatText}>{alert.location}</Text>
           </View>
         </View>
 
-        {/* Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.badgeRow}>
-            <View style={[styles.badge, { backgroundColor: `${alert.color}22`, borderColor: alert.color }]}>
-              <View style={[styles.dot, { backgroundColor: alert.color }]} />
-              <Text style={[styles.badgeText, { color: alert.color }]}>
-                {alert.severity} Risk {alert.type}
-              </Text>
+        {/* Content Section */}
+        <View style={styles.detailBody}>
+          <View style={styles.dragHandle} />
+          
+          <View style={styles.statusLine}>
+            <View style={[styles.riskTag, { backgroundColor: `${alert.color}20`, borderColor: alert.color }]}>
+              <Text style={[styles.riskTagText, { color: alert.color }]}>{alert.severity.toUpperCase()} SEVERITY</Text>
             </View>
-            <Text style={styles.timeText}>
-              {isActive ? `Updated ${alert.time}` : `Recorded ${alert.time}`}
-            </Text>
+            <Text style={styles.metaTime}>{isActive ? "LIVE BROADCAST" : "ARCHIVED ALERT"}</Text>
           </View>
 
           <Text style={styles.mainTitle}>{alert.title}</Text>
-          <Text style={styles.description}>
-            {isActive 
-              ? `Emergency services have flagged ${alert.location} due to high-risk ${alert.type.toLowerCase()} conditions. Local residents are advised to maintain high vigilance and monitor local news outlets.`
-              : `This is a historical record of a ${alert.type.toLowerCase()} event in ${alert.location}. The alert is no longer active, but terrain stability should still be considered.`}
-          </Text>
-        </View>
-
-        {/* Safety Instructions Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Safety Instructions</Text>
-            <MaterialCommunityIcons name="shield-check" size={20} color="#1e90ff" />
-          </View>
           
-          <View style={styles.instructionCard}>
-            <InstructionRow 
-              icon="home-variant-outline" 
-              text="Move to higher ground or designated safe zones immediately." 
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>
+              {isActive 
+                ? `Emergency warning for ${alert.location}. Critical ${alert.type.toLowerCase()} conditions detected. Authorities advise immediate action and strict adherence to safety protocols.`
+                : `Past report of a ${alert.type.toLowerCase()} event in this sector. Data provided for historical monitoring and terrain assessment.`}
+            </Text>
+          </View>
+
+          {/* Safety Protocols */}
+          <Text style={styles.sectionHeader}>Emergency Protocols</Text>
+          <View style={styles.protocolContainer}>
+            <ProtocolRow 
+                icon="office-building-marker" 
+                title="Relocation" 
+                desc="Evacuate to the nearest designated high-ground safety hub." 
             />
             {alert.type === "Flood" ? (
-              <InstructionRow 
-                icon="water-off" 
-                text="Avoid walking or driving through flood waters." 
+              <ProtocolRow 
+                icon="car-off" 
+                title="Traffic Control" 
+                desc="Strictly avoid low-lying bridges and roads near water bodies." 
               />
             ) : (
-              <InstructionRow 
-                icon="terrain" 
-                text="Stay clear of steep slopes, canyons, and drainage ways." 
+              <ProtocolRow 
+                icon="slope-downhill" 
+                title="Terrain Awareness" 
+                desc="Stay clear of steep rock faces and debris flow channels." 
               />
             )}
-            <InstructionRow 
-              icon="flashlight" 
-              text="Ensure your emergency kit and power banks are fully charged." 
-            />
-            <InstructionRow 
-              icon="radio-handheld" 
-              text="Listen to local authorities and evacuation orders." 
+            <ProtocolRow 
+                icon="broadcast" 
+                title="Comms" 
+                desc="Keep emergency radio active and charge all battery backups." 
             />
           </View>
-        </View>
 
-        {/* Action Buttons - Only show for Active alerts */}
-        {isActive && (
-          <View style={styles.actionContainer}>
-            <TouchableOpacity 
-              style={[styles.actionBtn, styles.callBtn]}
-              onPress={() => {/* Add Linking.openURL('tel:100') */}}
-            >
-              <Ionicons name="call" size={20} color="#fff" />
-              <Text style={styles.btnText}>Call Rescue</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.actionBtn, styles.sosBtn]}
-              onPress={() => navigation.navigate("SOS")}
-            >
-              <MaterialIcons name="sos" size={26} color="#fff" />
-              <Text style={styles.btnText}>SOS Broadcast</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          {/* Emergency Actions */}
+          {isActive && (
+            <View style={styles.actionGrid}>
+              <TouchableOpacity style={styles.callRescue}>
+                <Ionicons name="call" size={20} color="#fff" />
+                <Text style={styles.actionBtnText}>Local Units</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.sosBroadcast}
+                onPress={() => navigation.navigate("SOS")}
+              >
+                <MaterialIcons name="sos" size={30} color="#fff" />
+                <Text style={styles.actionBtnText}>SOS ALERT</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
-// Sub-component for Instruction Rows
-const InstructionRow = ({ icon, text }) => (
-  <View style={styles.instructionRow}>
-    <View style={styles.iconBackground}>
-      <MaterialCommunityIcons name={icon} size={20} color="#1e90ff" />
+const ProtocolRow = ({ icon, title, desc }) => (
+  <View style={styles.protocolItem}>
+    <View style={styles.protocolIconBox}>
+      <MaterialCommunityIcons name={icon} size={24} color="#1e90ff" />
     </View>
-    <Text style={styles.instructionText}>{text}</Text>
+    <View style={styles.protocolTextBox}>
+      <Text style={styles.protocolTitle}>{title}</Text>
+      <Text style={styles.protocolDesc}>{desc}</Text>
+    </View>
   </View>
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  errorContainer: { flex: 1, backgroundColor: "#0f2027", justifyContent: "center", alignItems: "center" },
-  errorText: { color: "#fff", fontSize: 18, marginBottom: 20 },
-  backBtn: { backgroundColor: "#1e90ff", padding: 10, borderRadius: 8 },
+  mainContainer: { flex: 1, backgroundColor: "#0f2027" },
+  errorBox: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0f2027", padding: 40 },
+  errorText: { color: "#9ca3af", fontSize: 16, marginTop: 20, textAlign: 'center' },
+  backBtn: { marginTop: 30, backgroundColor: "#1e90ff", paddingHorizontal: 30, paddingVertical: 15, borderRadius: 12 },
+  backBtnText: { color: '#fff', fontWeight: '800' },
   
-  header: { 
-    backgroundColor: "transparent",
-    paddingTop: Platform.OS === "android" ? 40 : 0 
-  },
-  headerContent: {
-    height: 60,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-
-  mapContainer: { height: 280, width: '100%', position: 'relative' },
+  mapHero: { height: 380, width: '100%' },
   map: { flex: 1 },
-  mapOverlay: { 
-    position: 'absolute', 
-    bottom: 20, 
-    left: 20, 
-    backgroundColor: '#111827', 
-    paddingHorizontal: 15, 
-    paddingVertical: 10, 
-    borderRadius: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#374151',
-    elevation: 5
-  },
-  locationTag: { color: '#fff', fontWeight: '600', marginLeft: 8 },
-
-  infoCard: { padding: 25, backgroundColor: '#111827', borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  badgeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  badge: { 
-    paddingHorizontal: 12, 
-    paddingVertical: 6, 
-    borderRadius: 12, 
-    borderWidth: 1, 
-    flexDirection: 'row', 
-    alignItems: 'center' 
-  },
-  dot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
-  badgeText: { fontWeight: '700', fontSize: 12 },
-  timeText: { color: '#9ca3af', fontSize: 12 },
-  mainTitle: { color: '#fff', fontSize: 26, fontWeight: 'bold', marginBottom: 12 },
-  description: { color: '#9ca3af', fontSize: 15, lineHeight: 24 },
-
-  section: { padding: 25 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-  sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginRight: 10 },
-  instructionCard: { backgroundColor: '#111827', padding: 20, borderRadius: 20 },
-  instructionRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20 },
-  iconBackground: { 
-    backgroundColor: 'rgba(30, 144, 255, 0.1)', 
-    padding: 8, 
-    borderRadius: 10,
-    marginRight: 15 
-  },
-  instructionText: { color: '#d1d5db', fontSize: 14, flex: 1, lineHeight: 20 },
-
-  actionContainer: { 
-    paddingHorizontal: 25, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginTop: 10 
-  },
-  actionBtn: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    paddingVertical: 16, 
-    borderRadius: 15, 
-    width: '48%',
-    elevation: 3
-  },
-  callBtn: { backgroundColor: '#1f2937', borderWidth: 1, borderColor: '#374151' },
-  sosBtn: { backgroundColor: '#FF4D4D' },
-  btnText: { color: '#fff', fontWeight: 'bold', marginLeft: 10, fontSize: 14 }
+  topNavOverlay: { position: 'absolute', top: 0, left: 0, right: 0, height: 120 },
+  navHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: Platform.OS === 'android' ? 30 : 0 },
+  blurCircle: { width: 45, height: 45, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  navTitle: { color: '#fff', fontWeight: '900', fontSize: 12, letterSpacing: 2 },
+  locationFloat: { position: 'absolute', bottom: 45, left: 20, backgroundColor: '#111827', paddingHorizontal: 15, paddingVertical: 12, borderRadius: 15, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#1f2937' },
+  locationFloatText: { color: '#fff', fontWeight: '700', marginLeft: 8, fontSize: 13 },
+  
+  detailBody: { padding: 25, backgroundColor: '#0f2027', borderTopLeftRadius: 35, borderTopRightRadius: 35, marginTop: -35, flex: 1, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  dragHandle: { width: 40, height: 4, backgroundColor: '#1f2937', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  statusLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  riskTag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+  riskTagText: { fontWeight: '900', fontSize: 10, letterSpacing: 1 },
+  metaTime: { color: '#4b5563', fontSize: 11, fontWeight: '800' },
+  mainTitle: { color: '#fff', fontSize: 30, fontWeight: '800', marginBottom: 20, letterSpacing: -0.5 },
+  infoBox: { backgroundColor: 'rgba(30,144,255,0.05)', padding: 20, borderRadius: 20, marginBottom: 30, borderWidth: 1, borderColor: 'rgba(30,144,255,0.1)' },
+  infoText: { color: '#9ca3af', fontSize: 15, lineHeight: 24, fontWeight: '500' },
+  sectionHeader: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 20, letterSpacing: 0.5 },
+  protocolContainer: { marginBottom: 30 },
+  protocolItem: { flexDirection: 'row', marginBottom: 25, alignItems: 'center' },
+  protocolIconBox: { width: 55, height: 55, borderRadius: 18, backgroundColor: 'rgba(30,144,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 18 },
+  protocolTextBox: { flex: 1 },
+  protocolTitle: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 4 },
+  protocolDesc: { color: '#6b7280', fontSize: 13, lineHeight: 18, fontWeight: '500' },
+  
+  actionGrid: { flexDirection: 'row', gap: 15, marginBottom: 20 },
+  sosBroadcast: { flex: 1.5, backgroundColor: '#FF4D4D', height: 65, borderRadius: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 5 },
+  callRescue: { flex: 1, backgroundColor: '#1f2937', height: 65, borderRadius: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#374151' },
+  actionBtnText: { color: '#fff', fontWeight: '900', marginLeft: 10, fontSize: 14, letterSpacing: 0.5 }
 });
