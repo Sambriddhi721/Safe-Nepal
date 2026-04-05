@@ -5,7 +5,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-const SERVER_URL = "http://127.0.0.1:5000"; 
+// Updated with your specific local IPv4 address
+const SERVER_URL = "http://192.168.111.70:5000"; 
 
 export default function ReportDisasterScreen({ navigation }) {
   const [category, setCategory] = useState("Flood");
@@ -15,7 +16,10 @@ export default function ReportDisasterScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!location || !details) return Alert.alert("Error", "Please fill all fields");
+    // Basic validation
+    if (!location.trim() || !details.trim()) {
+      return Alert.alert("Required Fields", "Please provide a location and situation details.");
+    }
 
     setLoading(true);
     try {
@@ -27,17 +31,27 @@ export default function ReportDisasterScreen({ navigation }) {
           severity,
           location,
           description: details,
+          timestamp: new Date().toISOString(), // Vital for Police Dashboard sorting
+          status: "Pending",                  // Default status for responders
         }),
       });
 
       if (response.ok) {
-        Alert.alert("Success", "Incident Reported to Authorities.");
-        navigation.goBack(); 
+        Alert.alert(
+          "Report Submitted", 
+          "Your incident report has been sent to the authorities successfully.",
+          [{ text: "OK", onPress: () => navigation.goBack() }]
+        );
       } else {
-        Alert.alert("Error", "Failed to submit to server.");
+        const errorData = await response.json();
+        Alert.alert("Submission Failed", errorData.message || "Failed to submit to server.");
       }
     } catch (error) {
-      Alert.alert("Error", "Server unreachable. Check ADB connection.");
+      Alert.alert(
+        "Connection Error", 
+        "Cannot reach the server. Make sure your PC and Phone are on the same Wi-Fi and the backend is running."
+      );
+      console.error("Submit Error:", error);
     } finally {
       setLoading(false);
     }
@@ -50,14 +64,14 @@ export default function ReportDisasterScreen({ navigation }) {
     >
       {/* Header Area */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
           <Ionicons name="close" size={28} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Report Incident</Text>
         <View style={{ width: 28 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Disaster Type Section */}
         <Text style={styles.label}>Disaster Type</Text>
         <View style={styles.row}>
@@ -114,7 +128,11 @@ export default function ReportDisasterScreen({ navigation }) {
         </View>
 
         {/* Action Button */}
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={loading}>
+        <TouchableOpacity 
+          style={[styles.submitButton, loading && { opacity: 0.7 }]} 
+          onPress={handleSubmit} 
+          disabled={loading}
+        >
           {loading ? (
             <ActivityIndicator color="white" />
           ) : (
@@ -129,15 +147,15 @@ export default function ReportDisasterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: "#162a31", // The exact dark teal from your screenshot
+    backgroundColor: "#162a31", 
     paddingHorizontal: 20, 
-    paddingTop: 50 
+    paddingTop: Platform.OS === 'ios' ? 60 : 40 
   },
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    marginBottom: 35 
+    marginBottom: 30 
   },
   headerTitle: { 
     color: 'white', 
@@ -161,13 +179,16 @@ const styles = StyleSheet.create({
     paddingVertical: 14, 
     borderRadius: 10, 
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent'
   },
   choiceInactive: { 
-    backgroundColor: "#1e293b" 
+    backgroundColor: "#1e293b",
+    borderColor: "#334155"
   },
   choiceActive: { 
-    backgroundColor: "#3b82f6" // The vibrant blue from your UI
+    backgroundColor: "#3b82f6" 
   }, 
   choiceText: { 
     color: "#94a3b8", 
@@ -184,7 +205,9 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     paddingHorizontal: 15, 
     height: 60, 
-    marginBottom: 20 
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#1e293b"
   },
   multiLineContainer: { 
     height: 140, 
@@ -202,7 +225,7 @@ const styles = StyleSheet.create({
     borderRadius: 15, 
     justifyContent: 'center', 
     alignItems: 'center', 
-    marginTop: 20, 
+    marginTop: 10, 
     marginBottom: 40,
     elevation: 4,
     shadowColor: '#3b82f6',

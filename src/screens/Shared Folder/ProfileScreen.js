@@ -50,7 +50,7 @@ export default function ProfileScreen({ navigation }) {
     // 4. 2-Second "Encrypted Session" Delay
     setTimeout(() => {
       setIsSwitching(false);
-      // This navigates to your already created Security/Responder screen
+      // Navigates to the Responder interface
       navigation.navigate("ResponderDashboard"); 
     }, 2000); 
   };
@@ -104,7 +104,7 @@ export default function ProfileScreen({ navigation }) {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
           
-          {/* USER HEADER */}
+          {/* 1. USER HEADER */}
           <View style={styles.headerProfile}>
              <Image 
               source={{ uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=3b82f6&color=fff&size=128` }} 
@@ -116,7 +116,7 @@ export default function ProfileScreen({ navigation }) {
             </View>
           </View>
 
-          {/* SECTION: GENERAL */}
+          {/* 2. SECTION: GENERAL */}
           <Text style={styles.sectionHeader}>GENERAL</Text>
           <View style={[styles.card, { backgroundColor: isDarkMode ? '#0f172a' : '#fff' }]}>
             <SettingRow 
@@ -129,7 +129,7 @@ export default function ProfileScreen({ navigation }) {
             />
           </View>
 
-          {/* SECTION: PREFERENCES & SECURITY */}
+          {/* 3. SECTION: PREFERENCES & SECURITY */}
           <Text style={styles.sectionHeader}>PREFERENCES & SECURITY</Text>
           <View style={[styles.card, { backgroundColor: isDarkMode ? '#0f172a' : '#fff' }]}>
             <SettingRow 
@@ -157,18 +157,7 @@ export default function ProfileScreen({ navigation }) {
             />
           </View>
 
-          {/* POLICE MODE ACTION */}
-          <Text style={styles.sectionHeader}>RESPONDER TOOLS</Text>
-          <TouchableOpacity 
-            style={styles.policeModeBtn} 
-            onPress={handlePoliceMode}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="shield-account" size={24} color="#020617" />
-            <Text style={styles.policeModeBtnText}>Switch to Police Mode</Text>
-          </TouchableOpacity>
-
-          {/* SECTION: SUPPORT */}
+          {/* 4. SECTION: SUPPORT */}
           <Text style={styles.sectionHeader}>SUPPORT</Text>
           <View style={[styles.card, { backgroundColor: isDarkMode ? '#0f172a' : '#fff' }]}>
             <SettingRow 
@@ -188,10 +177,21 @@ export default function ProfileScreen({ navigation }) {
             />
           </View>
 
-          {/* LOGOUT BUTTON */}
+          {/* 5. LOGOUT BUTTON (Now above Police Mode) */}
           <TouchableOpacity style={styles.logoutAction} onPress={signOut}>
             <Ionicons name="log-out-outline" size={22} color="#ef4444" />
             <Text style={styles.logoutText}>Log Out from Device</Text>
+          </TouchableOpacity>
+
+          {/* 6. POLICE MODE ACTION (Final Bottom Item) */}
+          <Text style={styles.sectionHeader}>RESPONDER TOOLS</Text>
+          <TouchableOpacity 
+            style={styles.policeModeBtn} 
+            onPress={handlePoliceMode}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="shield-account" size={24} color="#020617" />
+            <Text style={styles.policeModeBtnText}>Switch to Police Mode</Text>
           </TouchableOpacity>
 
           <Text style={styles.footerVersion}>Safe Nepal • Kathmandu, Nepal</Text>

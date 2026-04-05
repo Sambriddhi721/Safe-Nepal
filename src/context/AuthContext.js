@@ -7,19 +7,28 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // --- 🛠️ BYPASS LOGIN / MOCK USER ---
-  // Initial state allows the AppNavigator to skip the login screen during development
   const [user, setUser] = useState({
     uid: "mock-user-123",
     email: "test@safenepal.com",
     full_name: "Test Citizen",
-    role: "USER" // Set to "RESPONDER" to start in Police Mode
+    role: "USER" 
   });
   const [token, setToken] = useState("mock-token-abc");
-  const [loading, setLoading] = useState(false); 
+  const [loading, setLoading] = useState(true); 
 
-  // --- FIREBASE AUTH & FIRESTORE SYNC ---
+  // --- FIREBASE AUTH & STORAGE SYNC ---
   useEffect(() => {
+    const bootstrapAsync = async () => {
+      try {
+        const savedUser = await AsyncStorage.getItem('user_data');
+        if (savedUser) setUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.warn("Local storage load error:", e);
+      }
+    };
+
+    bootstrapAsync();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
@@ -41,9 +50,6 @@ export function AuthProvider({ children }) {
           setUser(userData);
           setToken(await firebaseUser.getIdToken());
           await AsyncStorage.setItem('user_data', JSON.stringify(userData));
-        } else {
-          // Note: Mock user logic remains intact if Firebase is not authenticated
-          console.log("No Firebase user detected; staying in Mock Mode.");
         }
       } catch (e) {
         console.error("Auth sync error:", e);
@@ -56,46 +62,40 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * SWITCH ROLE LOGIC
-   * Updates Firestore if connected, updates local state immediately for UI response.
+   * STABILIZED SWITCH ROLE LOGIC
+   * Uses functional update to avoid re-creating the function on every user change.
    */
   const switchRole = useCallback(async () => {
-    if (!user) return;
-    
-    const newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
-    
     try {
-      // 1. Update Firebase if a real user session exists
-      if (auth.currentUser) {
-        const userRef = doc(db, "users", auth.currentUser.uid);
-        await setDoc(userRef, { role: newRole }, { merge: true });
-      }
+      let finalRole = "";
 
-      // 2. Update local state & storage (Crucial for the Settings Screen navigation)
-      const updatedUser = { ...user, role: newRole };
-      setUser(updatedUser);
-      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+      // 1. Update local state using functional update for stability
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        const newRole = prevUser.role === "RESPONDER" ? "USER" : "RESPONDER";
+        finalRole = newRole; 
+        
+        const updatedUser = { ...prevUser, role: newRole };
+        // Sync to storage immediately
+        AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+        return updatedUser;
+      });
+
+      // 2. Update Firebase if a real session exists
+      if (auth.currentUser && finalRole) {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        await setDoc(userRef, { role: finalRole }, { merge: true });
+      }
       
-      return true; // Signal success to the caller
+      return true; 
     } catch (e) {
       console.error("Role Switch Error:", e);
       throw e;
     }
-  }, [user]);
+  }, []); // Dependencies empty = stable function reference
 
-  /**
-   * UPDATE PROFILE LOGIC
-   */
   const updateUserProfile = useCallback(async (formData) => {
-    if (!auth.currentUser) {
-       console.warn("Mock Mode: Saving profile locally only.");
-       const newUserState = { ...user, full_name: formData.name, phone: formData.phone };
-       setUser(newUserState);
-       return { success: true };
-    }
-
     try {
-      const userRef = doc(db, "users", auth.currentUser.uid);
       const updatedData = { 
         full_name: formData.name, 
         phone: formData.phone,
@@ -103,16 +103,22 @@ export function AuthProvider({ children }) {
         updatedAt: new Date().toISOString()
       };
 
-      await setDoc(userRef, updatedData, { merge: true });
-      const newUserState = { ...user, ...updatedData };
-      setUser(newUserState);
-      await AsyncStorage.setItem('user_data', JSON.stringify(newUserState));
+      if (auth.currentUser) {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        await setDoc(userRef, updatedData, { merge: true });
+      }
+
+      setUser(prev => {
+        const newUser = { ...prev, ...updatedData };
+        AsyncStorage.setItem('user_data', JSON.stringify(newUser));
+        return newUser;
+      });
+
       return { success: true };
     } catch (e) {
-      console.error("Firebase Update Error", e);
       return { success: false, error: e.message };
     }
-  }, [user]);
+  }, []);
 
   const signIn = useCallback(async (userData, userToken) => {
     setUser(userData);
@@ -131,7 +137,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // useMemo optimizes performance by only recalculating when state changes
   const authValue = useMemo(() => ({
     user,
     token,

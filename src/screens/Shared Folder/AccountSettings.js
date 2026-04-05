@@ -14,10 +14,19 @@ import { AuthContext } from '../../context/AuthContext';
 
 export default function AccountSettings({ navigation }) {
   const { colors, theme } = useContext(ThemeContext);
-  const { user } = useContext(AuthContext);
+  // Destructure switchRole and signOut to make the buttons functional
+  const { user, switchRole, signOut } = useContext(AuthContext);
   const isDarkMode = theme === 'dark';
 
-  // Navigation row component
+  const handleRoleSwitch = async () => {
+    try {
+      await switchRole();
+      // AppNavigator will automatically re-route based on the new role
+    } catch (error) {
+      console.error("Role switch failed", error);
+    }
+  };
+
   const NavRow = ({ label, icon, onPress, showBorder = true }) => (
     <TouchableOpacity 
       style={[
@@ -49,7 +58,6 @@ export default function AccountSettings({ navigation }) {
         <TouchableOpacity 
           onPress={() => navigation.goBack()} 
           style={styles.backBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="chevron-back" size={28} color={colors.text} />
         </TouchableOpacity>
@@ -63,10 +71,10 @@ export default function AccountSettings({ navigation }) {
       >
         <Text style={[styles.sectionHeader, { color: colors.text }]}>Manage Account</Text>
 
-        {/* --- 1. BILLING LINK (Plan Card) --- */}
+        {/* PLAN CARD */}
         <TouchableOpacity 
           style={[styles.planCard, { backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc' }]}
-          onPress={() => navigation.navigate('BillingScreen')} // Corrected target
+          onPress={() => navigation.navigate('BillingScreen')}
           activeOpacity={0.8}
         >
           <View style={styles.planHeader}>
@@ -79,7 +87,7 @@ export default function AccountSettings({ navigation }) {
           <Text style={styles.upgradeLink}>View Billing Details →</Text>
         </TouchableOpacity>
 
-        {/* ACCOUNT MANAGEMENT SECTION */}
+        {/* ACCOUNT MANAGEMENT */}
         <Text style={styles.groupLabel}>ACCOUNT MANAGEMENT</Text>
         <View style={[styles.groupCard, { backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc' }]}>
           <NavRow 
@@ -87,11 +95,10 @@ export default function AccountSettings({ navigation }) {
             icon="user" 
             onPress={() => navigation.navigate('EditProfile')} 
           />
-          {/* --- 2. BILLING LINK (Row) --- */}
           <NavRow 
             label="Payments & Billing" 
             icon="credit-card" 
-            onPress={() => navigation.navigate('BillingScreen')} // Corrected target
+            onPress={() => navigation.navigate('BillingScreen')} 
           />
           <NavRow 
             label="Backup & Sync" 
@@ -101,14 +108,13 @@ export default function AccountSettings({ navigation }) {
           />
         </View>
 
-        {/* DATA CONTROL SECTION */}
+        {/* DATA CONTROL */}
         <Text style={styles.groupLabel}>DATA CONTROL</Text>
         <View style={[styles.groupCard, { backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc' }]}>
-          {/* --- 3. LINKED ACCOUNTS LINK --- */}
           <NavRow 
             label="Linked Accounts" 
             icon="share-2" 
-            onPress={() => navigation.navigate('LinkedAccountsScreen')} // Corrected target
+            onPress={() => navigation.navigate('LinkedAccountsScreen')} 
           />
           <NavRow 
             label="Export Account History" 
@@ -117,6 +123,28 @@ export default function AccountSettings({ navigation }) {
             showBorder={false}
           />
         </View>
+
+        {/* --- NEW BUTTONS AT THE BOTTOM --- */}
+        
+        {/* LOGOUT BUTTON */}
+        <TouchableOpacity 
+          style={[styles.logoutBtn, { backgroundColor: isDarkMode ? '#1e293b' : '#fee2e2' }]} 
+          onPress={signOut}
+        >
+          <Feather name="log-out" size={20} color="#ef4444" />
+          <Text style={styles.logoutText}>Log Out from Device</Text>
+        </TouchableOpacity>
+
+        {/* SWITCH ROLE BUTTON */}
+        <TouchableOpacity 
+          style={[styles.switchModeBtn, { backgroundColor: '#bef264' }]} 
+          onPress={handleRoleSwitch}
+        >
+          <Ionicons name="shield-checkmark" size={20} color="#000" />
+          <Text style={styles.switchModeText}>
+            Switch to {user?.role === 'RESPONDER' ? 'Citizen' : 'Police'} Mode
+          </Text>
+        </TouchableOpacity>
 
       </ScrollView>
     </View>
@@ -142,7 +170,6 @@ const styles = StyleSheet.create({
     textAlign: 'center', 
     marginVertical: 20 
   },
-
   planCard: { 
     borderRadius: 24, 
     padding: 24, 
@@ -170,7 +197,6 @@ const styles = StyleSheet.create({
   freeText: { color: '#3b82f6', fontSize: 10, fontWeight: '900' },
   planTitle: { fontSize: 22, fontWeight: '700', marginBottom: 12 },
   upgradeLink: { color: '#3b82f6', fontWeight: '700', fontSize: 14 },
-
   groupLabel: { 
     color: '#64748b', 
     fontSize: 12, 
@@ -186,7 +212,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1e293b'
   },
-
   navRow: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -204,4 +229,33 @@ const styles = StyleSheet.create({
     marginRight: 15 
   },
   rowLabel: { fontSize: 16, fontWeight: '600' },
+
+  // --- NEW STYLES ---
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 18,
+    borderRadius: 24,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  logoutText: {
+    color: '#ef4444',
+    fontWeight: '800',
+    marginLeft: 10,
+  },
+  switchModeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 18,
+    borderRadius: 24,
+    marginBottom: 40,
+  },
+  switchModeText: {
+    color: '#000',
+    fontWeight: '900',
+    marginLeft: 10,
+  },
 });

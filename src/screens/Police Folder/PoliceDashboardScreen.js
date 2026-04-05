@@ -10,11 +10,8 @@ import * as Haptics from 'expo-haptics';
 import { AuthContext } from "../../context/AuthContext"; 
 import { ThemeContext } from '../../context/ThemeContext';
 
-const INITIAL_MOCK_SOS = [
-  { id: '1', type: 'Flood', location: 'Balkhu, Kathmandu', time: '2m ago', severity: 'Critical' },
-  { id: '2', type: 'Landslide', location: 'Nagdhunga Highway', time: '15m ago', severity: 'Critical' },
-  { id: '3', type: 'Medical', location: 'Patan Durbar Square', time: '22m ago', severity: 'High' },
-];
+// Your Computer IP address
+const SERVER_URL = "http://192.168.111.70:5000";
 
 export default function PoliceDashboardScreen({ navigation }) {
   const { user, role } = useContext(AuthContext) || {};
@@ -23,23 +20,44 @@ export default function PoliceDashboardScreen({ navigation }) {
   
   const [isAvailable, setIsAvailable] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [sosData, setSosData] = useState(INITIAL_MOCK_SOS);
-  const [stats, setStats] = useState({ solved: 142, active: INITIAL_MOCK_SOS.length });
+  const [loading, setLoading] = useState(true);
+  const [sosData, setSosData] = useState([]);
+  const [stats, setStats] = useState({ solved: 142, active: 0 });
 
-  // Safety Check: Redirect if not a responder
+  // 1. Fetch Data Logic
+  const fetchReports = async () => {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/reports`);
+      const data = await response.json();
+      
+      // Sort: Newest reports at the top based on timestamp
+      const sortedData = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      setSosData(sortedData);
+      setStats(prev => ({ ...prev, active: sortedData.length }));
+    } catch (error) {
+      console.error("Fetch error:", error);
+      // Optional: Alert.alert("Sync Error", "Could not connect to the central server.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // 2. Initial Load & Auth Check
   useEffect(() => {
     if (role !== "RESPONDER" && role !== "POLICE") {
        navigation.replace('UserHome'); 
+    } else {
+       fetchReports();
     }
   }, [role]);
 
+  // 3. Pull-to-Refresh Logic
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setTimeout(() => {
-      setSosData(INITIAL_MOCK_SOS);
-      setRefreshing(false);
-    }, 1500);
+    fetchReports();
   }, []);
 
   const handleRespond = (item) => {
@@ -52,16 +70,21 @@ export default function PoliceDashboardScreen({ navigation }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Alert.alert(
       "CONFIRM DISPATCH",
-      `Initialize response for ${item.type.toUpperCase()} at ${item.location}?`,
+      `Initialize response for ${item.category.toUpperCase()} at ${item.location}?`,
       [
         { text: "ABORT", style: "cancel" },
         { 
           text: "ACCEPT TASK", 
           onPress: () => {
-            setSosData(current => current.filter(sos => sos.id !== item.id));
-            setStats(prev => ({ ...prev, solved: prev.solved + 1 }));
-            // Navigate to the RealTimeMap with the item data
-            navigation.navigate('RealTimeMap', { emergencyItem: item, mode: 'POLICE' });
+            // Locally update UI for immediate feedback
+            setSosData(current => current.filter(sos => sos.timestamp !== item.timestamp));
+            setStats(prev => ({ ...prev, solved: prev.solved + 1, active: prev.active - 1 }));
+            
+            // Navigate to Map
+            navigation.navigate('RealTimeMap', { 
+              emergencyItem: item, 
+              mode: 'POLICE' 
+            });
           } 
         }
       ]
@@ -74,16 +97,26 @@ export default function PoliceDashboardScreen({ navigation }) {
       onPress={() => handleRespond(item)}
       activeOpacity={0.9}
     >
-      <View style={[styles.severityBar, { backgroundColor: item.severity === 'Critical' ? '#ef4444' : '#f59e0b' }]} />
+      <View style={[styles.severityBar, { 
+        backgroundColor: item.severity === 'High' ? '#ef4444' : 
+                         item.severity === 'Moderate' ? '#f59e0b' : '#3b82f6' 
+      }]} />
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
-          <Text style={[styles.sosTitle, { color: colors.text }]}>{item.type.toUpperCase()} ALERT</Text>
-          <Text style={styles.timeText}>{item.time}</Text>
+          <Text style={[styles.sosTitle, { color: colors.text }]}>
+            {item.category?.toUpperCase() || "INCIDENT"} ALERT
+          </Text>
+          <Text style={styles.timeText}>
+             {item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now'}
+          </Text>
         </View>
         <Text style={[styles.locationText, { color: isDarkMode ? '#94a3b8' : '#64748b' }]}>
           <Ionicons name="location" size={14} color="#ef4444" /> {item.location}
         </Text>
-        <View style={[styles.respondBtn, { backgroundColor: isAvailable ? '#3b82f6' : '#334155' }]}>
+        <Text style={[styles.descriptionText, { color: isDarkMode ? '#cbd5e1' : '#475569' }]} numberOfLines={2}>
+          {item.description}
+        </Text>
+        <View style={[styles.respondBtn, { backgroundColor: isAvailable ? '#3b82f6' : '#334155', marginTop: 10 }]}>
           <Text style={styles.respondText}>INITIALIZE RESPONSE</Text>
           <Ionicons name="shield-checkmark" size={14} color="#fff" />
         </View>
@@ -149,27 +182,31 @@ export default function PoliceDashboardScreen({ navigation }) {
 
       <Text style={[styles.sectionTitle, { color: '#64748b' }]}>LIVE INCIDENT FEED</Text>
       
-      <FlatList
-        data={isAvailable ? sosData : []}
-        renderItem={renderSOSItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#bef264" />}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons 
-              name={isAvailable ? "shield-check-outline" : "power-off"} 
-              size={64} 
-              color={isDarkMode ? "#1e293b" : "#e2e8f0"} 
-            />
-            <Text style={styles.emptyText}>
-              {isAvailable 
-                ? "Area Secured. No pending alerts." 
-                : "Terminal Disconnected.\nToggle Unit Status to resume operations."}
-            </Text>
-          </View>
-        }
-      />
+      {loading && !refreshing ? (
+        <ActivityIndicator size="large" color="#bef264" style={{ marginTop: 50 }} />
+      ) : (
+        <FlatList
+          data={isAvailable ? sosData : []}
+          renderItem={renderSOSItem}
+          keyExtractor={(item, index) => index.toString()}
+          contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#bef264" />}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons 
+                name={isAvailable ? "shield-check-outline" : "power-off"} 
+                size={64} 
+                color={isDarkMode ? "#1e293b" : "#e2e8f0"} 
+              />
+              <Text style={styles.emptyText}>
+                {isAvailable 
+                  ? "Area Secured. No pending alerts." 
+                  : "Terminal Disconnected.\nToggle Unit Status to resume operations."}
+              </Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -193,7 +230,8 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sosTitle: { fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
   timeText: { fontSize: 11, color: '#94a3b8', fontWeight: '700' },
-  locationText: { fontSize: 14, marginVertical: 10, fontWeight: '600' },
+  locationText: { fontSize: 14, marginTop: 10, fontWeight: '700' },
+  descriptionText: { fontSize: 13, marginBottom: 5, lineHeight: 18 },
   respondBtn: { flexDirection: 'row', alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, alignItems: 'center', gap: 8 },
   respondText: { color: '#fff', fontWeight: '900', fontSize: 11, letterSpacing: 1 },
   emptyContainer: { alignItems: 'center', marginTop: 60 },

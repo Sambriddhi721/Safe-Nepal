@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 
 import { ThemeContext } from "../context/ThemeContext";
 import { AuthContext } from "../context/AuthContext";
-import { saveSetting, getSetting } from "../services/dbService";
+import { getSetting } from "../services/dbService";
 
 export default function SettingsScreen({ navigation }) {
   const { theme, toggleTheme, colors } = useContext(ThemeContext);
@@ -19,7 +19,7 @@ export default function SettingsScreen({ navigation }) {
   const isResponder = role === "RESPONDER" || role === "POLICE";
   
   const [alertsEnabled, setAlertsEnabled] = useState(false);
-  const [isSwitching, setIsSwitching] = useState(false); // Smooth transition state
+  const [isSwitching, setIsSwitching] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -45,25 +45,14 @@ export default function SettingsScreen({ navigation }) {
         { 
           text: "Switch Now", 
           onPress: async () => {
-            setIsSwitching(true); // Start tactical overlay
-            
+            setIsSwitching(true); 
             try {
               if (switchRole) {
-                // 1. Execute logic in Context
                 await switchRole();
-                
-                // 2. Artificial delay for "Smooth Tactical" feel
+                // The AppNavigator key={role} prop will handle the actual 
+                // stack reset, so we just provide the visual delay here.
                 setTimeout(() => {
                   setIsSwitching(false);
-                  
-                  // 3. Navigate to appropriate dashboard
-                  if (!isResponder) {
-                    // We were a citizen, now we are a responder
-                    navigation.navigate('PoliceDashboard');
-                  } else {
-                    // We were a responder, now we are a citizen
-                    navigation.navigate('UserHome');
-                  }
                 }, 2000);
               }
             } catch (error) {
@@ -125,7 +114,7 @@ export default function SettingsScreen({ navigation }) {
              <Text style={styles.userRole}>{isResponder ? "Police Personnel" : "Citizen Account"}</Text>
           </View>
 
-          {/* ACCOUNT MODE SWITCHER (Responder Tools at bottom for better UX) */}
+          {/* APPEARANCE SECTION */}
           <Text style={styles.sectionLabel}>Appearance & Preferences</Text>
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <View style={styles.row}>
@@ -143,42 +132,43 @@ export default function SettingsScreen({ navigation }) {
             </View>
             <View style={styles.divider} />
             <SettingItem 
-               icon="notifications-outline" 
-               label="Notifications" 
-               sub="Alerts, Sounds"
-               onPress={() => {}} 
-               colors={colors} 
+                icon="notifications-outline" 
+                label="Notifications" 
+                sub="Alerts, Sounds"
+                onPress={() => {}} 
+                colors={colors} 
             />
           </View>
 
+          {/* SECURITY SECTION */}
           <Text style={styles.sectionLabel}>Security</Text>
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <SettingItem 
-               icon="lock-closed-outline" 
-               label="Security & 2FA" 
-               sub="Password, Biometrics"
-               onPress={() => {}} 
-               colors={colors} 
+                icon="lock-closed-outline" 
+                label="Security & 2FA" 
+                sub="Password, Biometrics"
+                onPress={() => {}} 
+                colors={colors} 
             />
             <SettingItem 
-               icon="shield-outline" 
-               label="Privacy Settings" 
-               sub="Location, Data Sharing"
-               borderNone
-               onPress={() => {}} 
-               colors={colors} 
+                icon="shield-outline" 
+                label="Privacy Settings" 
+                sub="Location, Data Sharing"
+                borderNone
+                onPress={() => {}} 
+                colors={colors} 
             />
           </View>
 
-          {/* LOGOUT */}
+          {/* 1. LOGOUT SECTION (Moved up) */}
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={22} color="#ef4444" />
             <Text style={styles.logoutText}>Log Out Account</Text>
           </TouchableOpacity>
 
-          <View style={{ marginVertical: 10 }} />
+          <View style={{ marginVertical: 15 }} />
 
-          {/* RESPONDER TOOLS - THE SWITCHER */}
+          {/* 2. RESPONDER TOOLS (Now at the very bottom) */}
           <Text style={styles.sectionLabel}>Specialized Tools</Text>
           <TouchableOpacity 
             style={[styles.switchModeBtn, { backgroundColor: isResponder ? "#334155" : "#bef264" }]}
@@ -247,9 +237,27 @@ const styles = StyleSheet.create({
   subLabel: { fontSize: 12, color: "#94a3b8", marginTop: 2 },
   border: { borderBottomWidth: 1 },
   divider: { height: 1, backgroundColor: 'rgba(148, 163, 184, 0.1)', marginLeft: 68 },
-  logoutBtn: { marginHorizontal: 20, backgroundColor: "rgba(239, 68, 68, 0.1)", padding: 18, borderRadius: 24, flexDirection: 'row', alignItems: "center", justifyContent: "center" },
+  logoutBtn: { 
+    marginHorizontal: 20, 
+    backgroundColor: "rgba(239, 68, 68, 0.1)", 
+    padding: 18, 
+    borderRadius: 24, 
+    flexDirection: 'row', 
+    alignItems: "center", 
+    justifyContent: "center",
+    marginTop: 10 
+  },
   logoutText: { color: "#ef4444", fontWeight: "800", fontSize: 16, marginLeft: 10 },
-  switchModeBtn: { marginHorizontal: 20, paddingVertical: 20, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 4, shadowOpacity: 0.2 },
+  switchModeBtn: { 
+    marginHorizontal: 20, 
+    paddingVertical: 20, 
+    borderRadius: 24, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    elevation: 4, 
+    shadowOpacity: 0.2,
+    marginBottom: 10 
+  },
   switchBtnContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   switchModeText: { fontWeight: "900", fontSize: 16 },
   versionText: { textAlign: 'center', color: '#64748b', fontSize: 12, marginTop: 30 }

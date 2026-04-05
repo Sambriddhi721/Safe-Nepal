@@ -17,14 +17,12 @@ import { AuthContext } from "../../context/AuthContext";
 
 export default function EditProfileScreen({ navigation }) {
   const { colors, theme } = useContext(ThemeContext);
-  // Using updateUserProfile from our updated AuthContext
   const { user, updateUserProfile } = useContext(AuthContext); 
   const isDarkMode = theme === 'dark';
 
-  // Initialize state with current user data
-  // Note: Ensure the keys (name, phone, bio) match your context logic
+  // 1. Robust state initialization
   const [formData, setFormData] = useState({
-    name: user?.full_name || user?.name || "",
+    name: user?.full_name || user?.displayName || user?.name || "",
     email: user?.email || "",
     phone: user?.phone || "",
     bio: user?.bio || ""
@@ -40,7 +38,6 @@ export default function EditProfileScreen({ navigation }) {
 
     setSaving(true);
     try {
-      // 1. Call the Firebase-linked function from AuthContext
       const result = await updateUserProfile(formData);
 
       if (result.success) {
@@ -131,7 +128,7 @@ export default function EditProfileScreen({ navigation }) {
         <InputField 
           label="Email Address" 
           value={formData.email} 
-          editable={false} // Email usually handled via Firebase Auth re-auth
+          editable={false} 
           onChangeText={(txt) => setFormData({...formData, email: txt})} 
         />
         
@@ -142,8 +139,9 @@ export default function EditProfileScreen({ navigation }) {
           onChangeText={(txt) => setFormData({...formData, phone: txt})} 
         />
         
+        {/* Updated Research Focus Field */}
         <InputField 
-          label="Bio / Research Focus" 
+          label="Research Focus / Bio" 
           value={formData.bio} 
           multiline={true}
           onChangeText={(txt) => setFormData({...formData, bio: txt})} 

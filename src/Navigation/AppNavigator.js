@@ -14,7 +14,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { AuthContext } from './src/context/AuthContext';
 import { ThemeContext } from './src/context/ThemeContext';
 
-// --- 📂 SHARED SCREENS (from Shared Folder) ---
+// --- 📂 SHARED SCREENS ---
 import WelcomeScreen from './src/screens/Shared Folder/WelcomeScreen';
 import LoginScreen from './src/screens/Shared Folder/LoginScreen';
 import SignupScreen from './src/screens/Shared Folder/SignupScreen';
@@ -29,9 +29,9 @@ import SecuritySettings from './src/screens/Shared Folder/SecuritySettings';
 import NotificationSettings from './src/screens/Shared Folder/NotificationSettings';
 import HelpScreen from './src/screens/Shared Folder/HelpScreen';
 import AboutScreen from './src/screens/Shared Folder/AboutScreen';
-import MapScreen from './src/screens/Shared Folder/Map'; // Added based on SS
+import MapScreen from './src/screens/Shared Folder/Map';
 
-// --- 📂 CITIZEN SCREENS (from Citizen Folder) ---
+// --- 📂 CITIZEN SCREENS ---
 import HomeScreen from './src/screens/Citizen Folder/HomeScreen';
 import SOSScreen from './src/screens/Citizen Folder/SOSScreen';
 import SOSListScreen from './src/screens/Citizen Folder/SOSListScreen';
@@ -44,9 +44,9 @@ import PredictionAnalyticsScreen from './src/screens/Citizen Folder/PredictionAn
 import ReliefCenterScreen from './src/screens/Citizen Folder/ReliefCenterScreen';
 import ReliefCenterDetails from './src/screens/Citizen Folder/ReliefCenterDetails';
 import SafeZonesScreen from './src/screens/Citizen Folder/SafeZonesScreen';
-import ReportDisasterScreen from './src/screens/Citizen Folder/ReportDisasterScreen'; // Added based on SS
+import ReportDisasterScreen from './src/screens/Citizen Folder/ReportDisasterScreen';
 
-// --- 📂 POLICE / RESPONDER SCREENS (from Police Folder) ---
+// --- 📂 POLICE / RESPONDER SCREENS ---
 import ResponderDashboard from './src/screens/Police Folder/ResponderDashboard';
 import PoliceDashboardScreen from './src/screens/Police Folder/PoliceDashboardScreen';
 import RealTimeMapScreen from './src/screens/Police Folder/RealTimeMapScreen';
@@ -54,9 +54,8 @@ import AlertScreen from './src/screens/Police Folder/AlertScreen';
 import AlertDetailsScreen from './src/screens/Police Folder/AlertDetailsScreen';
 import VolunteerScreen from './src/screens/Police Folder/VolunteerScreen';
 import HelperDashboardScreen from './src/screens/Police Folder/HelperDashboardScreen';
-import PoliceSOSList from './src/screens/Police Folder/SOSList'; // Police specific list
+import PoliceSOSList from './src/screens/Police Folder/SOSList';
 
-// Fix Android Animation Warning
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -79,14 +78,18 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      {/* KEY PROP ADDED HERE:
+          By adding `key={role}`, React Navigation will rebuild the stack 
+          whenever the role changes, ensuring UserHome points to the correct component.
+      */}
       <Stack.Navigator 
+        key={role} 
         screenOptions={{ 
           headerShown: false,
           cardStyle: { backgroundColor: isDarkMode ? '#020617' : '#f5f5f5' }
         }}
       >
         {token == null ? (
-          /* ⚪ AUTHENTICATION FLOW */
           <Stack.Group>
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
@@ -94,12 +97,11 @@ export default function AppNavigator() {
             <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
           </Stack.Group>
         ) : (
-          /* 🟢 AUTHENTICATED FLOW */
           <Stack.Group>
             {/* --- DASHBOARD LOGIC --- */}
             <Stack.Screen 
               name="UserHome" 
-              component={role === 'RESPONDER' || role === 'POLICE' ? PoliceDashboardScreen : HomeScreen} 
+              component={(role === 'RESPONDER' || role === 'POLICE') ? PoliceDashboardScreen : HomeScreen} 
             />
 
             {/* --- 🔵 CITIZEN FEATURES --- */}
