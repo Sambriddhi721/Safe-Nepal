@@ -48,8 +48,9 @@ import SafeZonesScreen from './src/screens/Citizen Folder/SafeZonesScreen';
 import ReportDisasterScreen from './src/screens/Citizen Folder/ReportDisasterScreen';
 
 // --- 📂 POLICE / RESPONDER SCREENS ---
+// ✅ ResponderDashboard IMPORT DELETED ENTIRELY
 import PoliceDashboardScreen from './src/screens/Police Folder/PoliceDashboardScreen';
-import PoliceSettingsScreen from './src/screens/Police Folder/PoliceSettingsScreen'; // Added this
+import PoliceSettingsScreen from './src/screens/Police Folder/PoliceSettingsScreen'; 
 import RealTimeMapScreen from './src/screens/Police Folder/RealTimeMapScreen';
 import AlertScreen from './src/screens/Police Folder/AlertScreen';
 import AlertDetailsScreen from './src/screens/Police Folder/AlertDetailsScreen';
@@ -62,9 +63,9 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const Stack = createStackNavigator();
 
-export default function AppNavigator() {
-  const { token, loading, role } = useContext(AuthContext);
-  const { theme } = useContext(ThemeContext);
+export default function App() {
+  const { token, loading, role } = useContext(AuthContext) || {};
+  const { theme } = useContext(ThemeContext) || { theme: 'dark' };
   const isDarkMode = theme === 'dark';
 
   if (loading) {
@@ -97,6 +98,7 @@ export default function AppNavigator() {
           ) : (
             <Stack.Group>
               {/* --- 🏠 DYNAMIC ROOT DASHBOARD --- */}
+              {/* Both POLICE and RESPONDER roles now point to PoliceDashboardScreen */}
               <Stack.Screen 
                 name="UserHome" 
                 component={

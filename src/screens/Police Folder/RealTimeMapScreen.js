@@ -1,18 +1,28 @@
 import React, { useEffect, useState, useContext } from "react";
 import { 
-  StyleSheet, View, Text, Image, Dimensions, 
-  ActivityIndicator, Platform, TouchableOpacity, Alert 
+  StyleSheet, 
+  View, 
+  Text, 
+  Image, 
+  Dimensions, 
+  ActivityIndicator, 
+  Platform, 
+  TouchableOpacity, 
+  Alert,
+  SafeAreaView, // FIXED: Added missing import
+  StatusBar     // FIXED: Added missing import
 } from "react-native";
 import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
 
 import { AuthContext } from "../../context/AuthContext";
-import { API_BASE } from "../../config";
+// Ensure this path exists or replace with your string URL
+import { API_BASE } from "../../config"; 
 
 const { width, height } = Dimensions.get('window');
 
 export default function RealTimeMapScreen({ navigation }) {
-  const { token } = useContext(AuthContext);
+  const { token } = useContext(AuthContext) || {}; // Added fallback
   const [sosList, setSosList] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,6 +34,7 @@ export default function RealTimeMapScreen({ navigation }) {
   }, [token]);
 
   const fetchMarkers = async () => {
+    if (!token) return; // Don't fetch if no token
     try {
       const res = await axios.get(`${API_BASE}/api/sos/all`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -67,7 +78,7 @@ export default function RealTimeMapScreen({ navigation }) {
       {/* 2. THE MAP CONTAINER */}
       <View style={styles.mapWrapper}>
         <Image 
-          // Ensure this path is correct relative to the file location
+          // NOTE: Ensure 'nepal_map.jpg' exists in this folder!
           source={require('./nepal_map.jpg')} 
           style={styles.mapImage}
           resizeMode="cover" 
@@ -75,10 +86,7 @@ export default function RealTimeMapScreen({ navigation }) {
 
         {/* 3. DYNAMIC SOS MARKERS */}
         {!loading && sosList.map((item, index) => {
-          /**
-           * LOGIC: If your backend provides Lat/Long, you'd calculate position here.
-           * For now, we use a deterministic "scatter" based on the index.
-           */
+          // Logic for static scattering based on index
           const topPos = `${25 + (index * 17) % 55}%`;
           const leftPos = `${15 + (index * 23) % 70}%`;
 
@@ -91,7 +99,6 @@ export default function RealTimeMapScreen({ navigation }) {
                 { top: topPos, left: leftPos }
               ]} 
             >
-              {/* Pulsing Effect Container */}
               <View style={styles.pulseContainer}>
                 <View style={styles.pulseRing} />
                 <View style={styles.coreMarker} />
@@ -175,9 +182,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
     borderWidth: 2,
     borderColor: '#fff',
-    shadowColor: "#ef4444",
-    shadowOpacity: 1,
-    shadowRadius: 10,
     zIndex: 5,
   },
   pulseRing: {

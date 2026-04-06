@@ -1,7 +1,15 @@
 import React, { useState } from "react";
 import { 
-  View, Text, StyleSheet, TextInput, TouchableOpacity, 
-  ScrollView, FlatList, StatusBar, Platform 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  ScrollView, 
+  FlatList, 
+  StatusBar, 
+  SafeAreaView, // FIXED: Added missing import
+  Platform 
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -103,7 +111,7 @@ export default function AlertScreen({ navigation }) {
                   <Text style={styles.locationText}>{item.location}</Text>
                 </View>
                 <View style={styles.cardFooter}>
-                   <View style={[styles.typeBadge, { backgroundColor: `${item.color}15` }]}>
+                   <View style={[styles.typeBadge, { backgroundColor: `${item.color}25` }]}>
                       <MaterialCommunityIcons 
                         name={item.type === "Flood" ? "water-alert" : "image-filter-hdr"} 
                         size={14} color={item.color} 
@@ -123,6 +131,7 @@ export default function AlertScreen({ navigation }) {
           }
         />
 
+        {/* Floating Action Button */}
         <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("ReportDisaster")}>
           <LinearGradient colors={["#1e90ff", "#0052D4"]} style={styles.fabGradient}>
             <Ionicons name="megaphone" size={28} color="#fff" />
@@ -136,7 +145,7 @@ export default function AlertScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
-  header: { paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+  header: { paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Platform.OS === 'android' ? 40 : 10 },
   headerSubtitle: { color: "#1e90ff", fontSize: 10, fontWeight: "900", letterSpacing: 2 },
   headerTitle: { color: "#fff", fontSize: 32, fontWeight: "800" },
   bellBtn: { backgroundColor: "#111827", padding: 12, borderRadius: 15, borderWidth: 1, borderColor: '#1f2937' },

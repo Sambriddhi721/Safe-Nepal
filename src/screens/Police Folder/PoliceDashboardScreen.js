@@ -2,12 +2,12 @@ import React, { useState, useContext, useEffect, useCallback, useRef } from 'rea
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
   StatusBar, Switch, Alert, Platform, ActivityIndicator, 
-  SafeAreaView, Dimensions, RefreshControl 
+  SafeAreaView, RefreshControl, ScrollView, Dimensions 
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as LocalAuthentication from 'expo-local-authentication';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 
 // Contexts
 import { AuthContext } from "../../context/AuthContext"; 
@@ -18,7 +18,7 @@ const { width } = Dimensions.get('window');
 
 export default function PoliceDashboardScreen({ navigation }) {
   const { user, role } = useContext(AuthContext) || {};
-  const { colors, theme } = useContext(ThemeContext) || { theme: 'dark' };
+  const { theme } = useContext(ThemeContext) || { theme: 'dark' };
   const isDarkMode = theme === 'dark';
   const mapRef = useRef(null);
   
@@ -28,204 +28,270 @@ export default function PoliceDashboardScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sosData, setSosData] = useState([]);
-  const [unitData, setUnitData] = useState([]); 
+  const [userLocation, setUserLocation] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
 
-  // 1. Tactical Clock
+  // 1. Tactical Clock & Auto-Refresh
   useEffect(() => {
-    const timer = setInterval(() => {
+    const clockTimer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     }, 1000);
-    return () => clearInterval(timer);
+
+    const dataTimer = setInterval(() => {
+      if (isOnDuty) fetchTacticalData(false);
+    }, 30000); // Auto-poll for new reports every 30s
+
+    return () => {
+      clearInterval(clockTimer);
+      clearInterval(dataTimer);
+    };
+  }, [isOnDuty]);
+
+  // 2. Permission & Initial Data
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission Denied", "Location access is required for tactical dispatch.");
+      } else {
+        const loc = await Location.getCurrentPositionAsync({});
+        setUserLocation(loc.coords);
+      }
+      fetchTacticalData();
+    })();
   }, []);
 
-  // 2. Data Fetching
-  const fetchTacticalData = async () => {
+  const fetchTacticalData = async (showLoader = true) => {
+    if (showLoader) setLoading(true);
     try {
-      const [sosRes, unitRes] = await Promise.all([
-        fetch(`${SERVER_URL}/api/reports`),
-        fetch(`${SERVER_URL}/api/units`)
-      ]);
-      const sos = await sosRes.json();
-      const units = await unitRes.json();
-      setSosData(sos.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
-      setUnitData(units);
+      const response = await fetch(`${SERVER_URL}/api/reports`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setSosData(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+      }
     } catch (error) {
-      console.error("Fetch error:", error);
+      console.error("Tactical Data Fetch Error:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => { fetchTacticalData(); }, []);
-
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     fetchTacticalData();
   }, []);
 
-  // 3. Incident Interaction
-  const focusOnIncident = (item) => {
-    if (!isOnDuty) {
-      Alert.alert("OFFLINE", "Switch to ON DUTY to view tactical coordinates.");
-      return;
-    }
-    mapRef.current?.animateToRegion({
-      ...item.coordinates,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    }, 1000);
-  };
-
+  // 3. Dispatch Logic
   const handleDispatch = (item) => {
     if (!isOnDuty) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("OFF-DUTY", "You must be active to accept dispatch calls.");
       return;
     }
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Alert.alert(
       "CONFIRM DISPATCH",
-      `Send units to ${item.category} at ${item.location}?`,
+      `Initialize response for ${item.category} at ${item.location}?`,
       [
         { text: "CANCEL", style: "cancel" },
-        { text: "DISPATCH", onPress: () => navigation.navigate('RealTimeMap', { emergencyItem: item, mode: 'POLICE' }) }
+        { 
+          text: "ACCEPT", 
+          onPress: () => navigation.navigate('RealTimeMap', { 
+            emergencyItem: item, 
+            mode: 'POLICE' 
+          }) 
+        }
       ]
     );
   };
 
-  const renderSOSItem = ({ item }) => (
-    <TouchableOpacity 
-      style={[styles.sosCard, { backgroundColor: isDarkMode ? '#1e293b' : '#fff' }]}
-      onPress={() => focusOnIncident(item)}
-    >
-      <View style={[styles.severityBar, { backgroundColor: item.severity === 'High' ? '#ef4444' : '#f59e0b' }]} />
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <Text style={[styles.sosTitle, { color: colors.text }]}>{item.category?.toUpperCase()}</Text>
-          <Text style={styles.timeText}>{new Date(item.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</Text>
-        </View>
-        <Text style={[styles.locationText, { color: isDarkMode ? '#94a3b8' : '#64748b' }]}>{item.location}</Text>
-        <TouchableOpacity style={styles.respondBtn} onPress={() => handleDispatch(item)}>
-          <Text style={styles.respondText}>INITIALIZE RESPONSE</Text>
-          <Ionicons name="chevron-forward" size={12} color="#bef264" />
-        </TouchableOpacity>
+  // --- UI Sub-Components ---
+  const ToolCard = ({ icon, title, color, onPress }) => (
+    <TouchableOpacity style={styles.toolCard} onPress={onPress}>
+      <View style={[styles.toolIconCircle, { backgroundColor: `${color}20` }]}>
+        <MaterialCommunityIcons name={icon} size={28} color={color} />
       </View>
+      <Text style={styles.toolTitle}>{title}</Text>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? '#020617' : '#f8fafc' }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: '#020617' }]}>
       <StatusBar barStyle="light-content" />
       
-      {/* TACTICAL MAP SECTION */}
-      <View style={styles.mapContainer}>
-        <MapView
-          ref={mapRef}
-          provider={PROVIDER_GOOGLE}
-          style={styles.map}
-          initialRegion={{ latitude: 27.7172, longitude: 85.3240, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
-          customMapStyle={isDarkMode ? darkMapStyle : []}
-        >
-          {sosData.map((sos, i) => (
-            <Marker key={i} coordinate={sos.coordinates} title={sos.category}>
-              <View style={styles.sosMarkerContainer}>
-                <View style={[styles.pulseRing, sos.severity === 'High' && styles.pulseRingHigh]} />
-                <View style={[styles.sosMarkerDot, sos.severity === 'High' && styles.sosMarkerDotHigh]} />
-              </View>
-            </Marker>
-          ))}
-        </MapView>
-        
-        {/* HUD OVERLAY */}
-        <View style={styles.hudOverlay}>
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.badgeText}>TERMINAL NP-7702</Text>
-              <Text style={[styles.title, { color: '#fff' }]}>{currentTime}</Text>
-            </View>
-            <TouchableOpacity onPress={() => navigation.navigate("PoliceSettings")} style={styles.settingsBtn}>
-              <Ionicons name="settings-sharp" size={22} color="#bef264" />
+      <ScrollView 
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />}
+      >
+        {/* HEADER AREA */}
+        <View style={styles.headerContainer}>
+          <View>
+            <Text style={styles.roleText}>{role?.toUpperCase() || 'POLICE'} TERMINAL</Text>
+            <Text style={styles.welcomeText}>{currentTime}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.citizenSwitch} 
+              onPress={() => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                navigation.navigate("HomeScreen");
+              }}
+            >
+              <Ionicons name="person-circle-outline" size={18} color="#3b82f6" />
+              <Text style={styles.citizenBtnText}>Citizen</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("PoliceSettings")} style={styles.iconCircle}>
+              <Ionicons name="cog" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-          
-          <View style={[styles.statusCard, { borderColor: isOnDuty ? '#bef264' : '#ef4444' }]}>
-            <Text style={[styles.statusTitle, { color: isOnDuty ? '#bef264' : '#ef4444' }]}>
-              {isOnDuty ? "● UNIT ACTIVE" : "○ UNIT STANDBY"}
-            </Text>
-            <Switch value={isOnDuty} onValueChange={setIsOnDuty} />
+        </View>
+
+        {/* WEATHER/LOCATION CARD */}
+        <View style={styles.weatherCard}>
+          <View>
+            <View style={styles.locationRow}>
+              <Ionicons name="location" size={14} color="#64748b" />
+              <Text style={styles.locationCity}>Kathmandu, Nepal</Text>
+            </View>
+            <Text style={styles.weatherCondition}>CLEAR SKY - OPTIMAL VISIBILITY</Text>
+          </View>
+          <Text style={styles.tempText}>28°C</Text>
+        </View>
+
+        {/* STATS SECTION */}
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, { borderLeftColor: '#ef4444' }]}>
+            <Text style={styles.statNumber}>{sosData.filter(i => i.severity === 'High').length.toString().padStart(2, '0')}</Text>
+            <Text style={styles.statLabel}>Active SOS</Text>
+          </View>
+          <View style={[styles.statCard, { borderLeftColor: '#3b82f6' }]}>
+            <Text style={styles.statNumber}>{sosData.length.toString().padStart(2, '0')}</Text>
+            <Text style={styles.statLabel}>Total Intel</Text>
           </View>
         </View>
-      </View>
 
-      {/* CONTROLS SECTION */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity onPress={() => setActiveTab('FEED')} style={[styles.tab, activeTab === 'FEED' && styles.activeTab]}>
-          <Text style={[styles.tabText, activeTab === 'FEED' && styles.activeTabText]}>LIVE FEED</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setActiveTab('OPS')} style={[styles.tab, activeTab === 'OPS' && styles.activeTab]}>
-          <Text style={[styles.tabText, activeTab === 'OPS' && styles.activeTabText]}>COMMAND</Text>
-        </TouchableOpacity>
-      </View>
-
-      {activeTab === 'FEED' ? (
-        <FlatList
-          data={isOnDuty ? sosData : []}
-          renderItem={renderSOSItem}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#bef264" />}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
-          ListEmptyComponent={<Text style={styles.emptyText}>No Active Alerts in Sector</Text>}
-        />
-      ) : (
-        <View style={styles.toolsGrid}>
-          <ToolCard icon="people" title="Volunteers" onPress={() => navigation.navigate("Volunteer")} />
-          <ToolCard icon="megaphone" title="Broadcast" onPress={() => navigation.navigate("AlertScreen")} />
-          <ToolCard icon="list" title="History" onPress={() => navigation.navigate("PoliceSOSList")} />
-          <ToolCard icon="stats-chart" title="Heatmap" onPress={() => {}} />
+        {/* DUTY TOGGLE */}
+        <View style={[styles.dutyCard, { borderColor: isOnDuty ? '#10b981' : '#ef4444' }]}>
+          <View style={styles.dutyInfo}>
+            <View style={[styles.statusDot, { backgroundColor: isOnDuty ? '#10b981' : '#ef4444' }]} />
+            <Text style={[styles.dutyText, { color: isOnDuty ? '#10b981' : '#ef4444' }]}>
+              {isOnDuty ? "UNIT ACTIVE" : "UNIT STANDBY"}
+            </Text>
+          </View>
+          <Switch 
+            value={isOnDuty} 
+            onValueChange={(val) => {
+              setIsOnDuty(val);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }} 
+            trackColor={{ false: "#1e293b", true: "#10b981" }} 
+          />
         </View>
-      )}
+
+        {/* NAVIGATION TABS */}
+        <View style={styles.tabBar}>
+          <TouchableOpacity onPress={() => setActiveTab('FEED')} style={[styles.tab, activeTab === 'FEED' && styles.activeTab]}>
+            <Text style={[styles.tabText, activeTab === 'FEED' && styles.activeTabText]}>INTEL FEED</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setActiveTab('TOOLS')} style={[styles.tab, activeTab === 'TOOLS' && styles.activeTab]}>
+            <Text style={[styles.tabText, activeTab === 'TOOLS' && styles.activeTabText]}>OPS CENTER</Text>
+          </TouchableOpacity>
+        </View>
+
+        {activeTab === 'FEED' ? (
+          <View style={{ paddingHorizontal: 20, paddingBottom: 30 }}>
+            {sosData.length === 0 && (
+              <View style={styles.emptyContainer}>
+                <ActivityIndicator animating={loading} color="#3b82f6" />
+                <Text style={styles.emptyText}>
+                  {isOnDuty ? (loading ? "Decrypting Signals..." : "Sector Clear") : "Switch to ACTIVE to receive intel"}
+                </Text>
+              </View>
+            )}
+            {isOnDuty && sosData.map((item, index) => (
+              <TouchableOpacity 
+                key={index} 
+                style={styles.sosCard} 
+                onPress={() => handleDispatch(item)}
+              >
+                <View style={[styles.severityStrip, { backgroundColor: item.severity === 'High' ? '#ef4444' : '#f59e0b' }]} />
+                <View style={styles.sosCardBody}>
+                  <View style={styles.sosHeader}>
+                    <Text style={styles.sosCategory}>{item.category?.toUpperCase() || "INCIDENT"}</Text>
+                    <Text style={styles.sosTime}>{new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
+                  </View>
+                  <Text style={styles.sosLoc} numberOfLines={1}>📍 {item.location}</Text>
+                  <View style={styles.dispatchRow}>
+                    <Text style={styles.dispatchText}>TAP TO INITIALIZE RESPONSE</Text>
+                    <Ionicons name="shield-checkmark" size={12} color="#10b981" />
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.toolsGrid}>
+            <ToolCard icon="shield-alert" title="SOS Feed" color="#ef4444" onPress={() => setActiveTab('FEED')} />
+            <ToolCard icon="map-marker-radius" title="Patrol" color="#3b82f6" onPress={() => {}} />
+            <ToolCard icon="bullhorn" title="Broadcast" color="#f59e0b" onPress={() => navigation.navigate("AlertScreen")} />
+            <ToolCard icon="account-group" title="Volunteers" color="#10b981" onPress={() => navigation.navigate("Volunteer")} />
+            <ToolCard icon="file-document" title="Reports" color="#8b5cf6" onPress={() => navigation.navigate("PoliceSOSList")} />
+            <ToolCard icon="history" title="History" color="#64748b" onPress={() => {}} />
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const ToolCard = ({ icon, title, onPress }) => (
-  <TouchableOpacity style={styles.toolCard} onPress={onPress}>
-    <Ionicons name={icon} size={24} color="#3b82f6" />
-    <Text style={styles.toolTitle}>{title}</Text>
-  </TouchableOpacity>
-);
-
-const darkMapStyle = [{"elementType": "geometry", "stylers": [{"color": "#121929"}]}, {"elementType": "labels.text.fill", "stylers": [{"color": "#475569"}]}];
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  mapContainer: { height: '45%', width: '100%' },
-  map: { ...StyleSheet.absoluteFillObject },
-  hudOverlay: { position: 'absolute', top: 10, width: '100%', paddingHorizontal: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  badgeText: { fontSize: 9, fontWeight: '900', color: '#3b82f6', letterSpacing: 2 },
-  title: { fontSize: 28, fontWeight: '800' },
-  settingsBtn: { backgroundColor: 'rgba(30,41,59,0.8)', padding: 10, borderRadius: 12 },
-  statusCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(30,41,59,0.9)', padding: 10, borderRadius: 12, marginTop: 10, borderWidth: 1 },
-  statusTitle: { fontSize: 10, fontWeight: '900' },
-  tabContainer: { flexDirection: 'row', margin: 20, backgroundColor: 'rgba(30,41,59,0.1)', borderRadius: 12, padding: 4 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
+  roleText: { color: '#3b82f6', fontSize: 10, fontWeight: '900', letterSpacing: 2 },
+  welcomeText: { color: '#fff', fontSize: 26, fontWeight: '800' },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  iconCircle: { backgroundColor: '#1e293b', padding: 10, borderRadius: 12, marginLeft: 10 },
+  citizenSwitch: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#3b82f640' },
+  citizenBtnText: { color: '#3b82f6', fontSize: 12, fontWeight: '700', marginLeft: 5 },
+  
+  weatherCard: { backgroundColor: '#1e293b80', marginHorizontal: 20, padding: 25, borderRadius: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#ffffff10' },
+  locationRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  locationCity: { color: '#64748b', fontSize: 14, fontWeight: '600', marginLeft: 5 },
+  weatherCondition: { color: '#fff', fontSize: 11, fontWeight: '800', opacity: 0.6 },
+  tempText: { color: '#fff', fontSize: 44, fontWeight: '300' },
+
+  statsRow: { flexDirection: 'row', paddingHorizontal: 20, marginTop: 20, justifyContent: 'space-between' },
+  statCard: { width: '48%', backgroundColor: '#1e293b', padding: 20, borderRadius: 20, borderLeftWidth: 4 },
+  statNumber: { color: '#fff', fontSize: 28, fontWeight: '800' },
+  statLabel: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 4 },
+
+  dutyCard: { margin: 20, padding: 18, borderRadius: 20, backgroundColor: '#0f172a', borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dutyInfo: { flexDirection: 'row', alignItems: 'center' },
+  statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
+  dutyText: { fontSize: 12, fontWeight: '900', letterSpacing: 1 },
+
+  tabBar: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 20, backgroundColor: '#0f172a', borderRadius: 15, padding: 5 },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
   activeTab: { backgroundColor: '#3b82f6' },
-  tabText: { fontSize: 11, fontWeight: '800', color: '#64748b' },
+  tabText: { color: '#64748b', fontSize: 12, fontWeight: '800' },
   activeTabText: { color: '#fff' },
-  sosCard: { borderRadius: 15, marginBottom: 12, flexDirection: 'row', overflow: 'hidden', elevation: 2 },
-  severityBar: { width: 5 },
-  cardContent: { flex: 1, padding: 15 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-  sosTitle: { fontSize: 13, fontWeight: '900' },
-  timeText: { fontSize: 10, color: '#94a3b8' },
-  locationText: { fontSize: 12, marginVertical: 5 },
-  respondBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
-  respondText: { color: '#bef264', fontSize: 10, fontWeight: '900', marginRight: 5 },
-  toolsGrid: { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  toolCard: { width: '48%', backgroundColor: 'rgba(59,130,246,0.1)', padding: 20, borderRadius: 15, marginBottom: 15, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)' },
-  toolTitle: { color: '#3b82f6', fontWeight: '800', marginTop: 8, fontSize: 12 },
-  sosMarkerDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#ef4444', borderWidth: 2, borderColor: '#fff' },
-  pulseRing: { position: 'absolute', width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(239,68,68,0.3)' },
-  emptyText: { textAlign: 'center', color: '#64748b', marginTop: 20, fontWeight: '600' }
+
+  sosCard: { backgroundColor: '#1e293b', borderRadius: 20, marginBottom: 15, flexDirection: 'row', overflow: 'hidden' },
+  severityStrip: { width: 6 },
+  sosCardBody: { flex: 1, padding: 18 },
+  sosHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  sosCategory: { color: '#fff', fontSize: 15, fontWeight: '900' },
+  sosTime: { color: '#64748b', fontSize: 12 },
+  sosLoc: { color: '#94a3b8', fontSize: 14, marginVertical: 10 },
+  dispatchRow: { flexDirection: 'row', alignItems: 'center' },
+  dispatchText: { color: '#10b981', fontSize: 10, fontWeight: '900', marginRight: 5 },
+
+  toolsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10, justifyContent: 'space-around', paddingBottom: 30 },
+  toolCard: { width: '30%', alignItems: 'center', marginBottom: 25 },
+  toolIconCircle: { width: 65, height: 65, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  toolTitle: { color: '#94a3b8', fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  emptyContainer: { alignItems: 'center', marginTop: 40 },
+  emptyText: { color: '#64748b', marginTop: 10, fontWeight: '700' }
 });
