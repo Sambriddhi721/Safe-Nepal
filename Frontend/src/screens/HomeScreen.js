@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useContext } from "react";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView, Animated, StatusBar, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";

@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, TextInput, StyleSheet, Button, Text, Alert } from 'react-native';
 // --- UPDATED IMPORT FOR EXPO ---
 import { saveNote } from '../../services/dbService';

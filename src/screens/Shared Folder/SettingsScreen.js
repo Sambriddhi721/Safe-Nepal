@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, 
-  ScrollView, Alert, StatusBar, SafeAreaView, Vibration, ActivityIndicator
+  ScrollView, Alert, StatusBar, Vibration, ActivityIndicator
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics'; 

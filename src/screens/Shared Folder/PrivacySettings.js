@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Switch, StatusBar, Alert, ActivityIndicator, SafeAreaView, Platform
+  Switch, StatusBar, Alert, ActivityIndicator, Platform
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";

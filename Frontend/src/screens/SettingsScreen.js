@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
-  ScrollView, Alert, StatusBar, SafeAreaView, Vibration, ActivityIndicator
+  ScrollView, Alert, StatusBar, Vibration, ActivityIndicator
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";

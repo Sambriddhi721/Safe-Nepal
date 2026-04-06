@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { 
   View, Text, StyleSheet, TextInput, TouchableOpacity, 
-  ScrollView, FlatList, SafeAreaView, StatusBar, Platform 
+  ScrollView, FlatList, StatusBar, Platform 
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";

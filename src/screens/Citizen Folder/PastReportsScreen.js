@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   View, Text, StyleSheet, FlatList, TextInput, 
-  TouchableOpacity, SafeAreaView, RefreshControl 
+  TouchableOpacity, RefreshControl 
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 

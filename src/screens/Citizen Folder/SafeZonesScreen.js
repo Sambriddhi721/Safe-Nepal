@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from "react";
 import { 
   View, Text, StyleSheet, TouchableOpacity, FlatList, 
-  TextInput, ScrollView, Platform, StatusBar, SafeAreaView 
+  TextInput, ScrollView, Platform, StatusBar 
 } from "react-native";
 import MapView, { Marker, Callout } from "react-native-maps";
 import { Ionicons, MaterialCommunityIcons, FontAwesome5, Feather } from "@expo/vector-icons";

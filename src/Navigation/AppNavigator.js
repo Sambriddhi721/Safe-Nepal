@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // --- Context Providers ---
 import { AuthContext } from './src/context/AuthContext';
@@ -47,13 +48,12 @@ import SafeZonesScreen from './src/screens/Citizen Folder/SafeZonesScreen';
 import ReportDisasterScreen from './src/screens/Citizen Folder/ReportDisasterScreen';
 
 // --- 📂 POLICE / RESPONDER SCREENS ---
-import ResponderDashboard from './src/screens/Police Folder/ResponderDashboard';
 import PoliceDashboardScreen from './src/screens/Police Folder/PoliceDashboardScreen';
+import PoliceSettingsScreen from './src/screens/Police Folder/PoliceSettingsScreen'; // Added this
 import RealTimeMapScreen from './src/screens/Police Folder/RealTimeMapScreen';
 import AlertScreen from './src/screens/Police Folder/AlertScreen';
 import AlertDetailsScreen from './src/screens/Police Folder/AlertDetailsScreen';
 import VolunteerScreen from './src/screens/Police Folder/VolunteerScreen';
-import HelperDashboardScreen from './src/screens/Police Folder/HelperDashboardScreen';
 import PoliceSOSList from './src/screens/Police Folder/SOSList';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -76,74 +76,76 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      {/* KEY PROP ADDED HERE:
-          By adding `key={role}`, React Navigation will rebuild the stack 
-          whenever the role changes, ensuring UserHome points to the correct component.
-      */}
-      <Stack.Navigator 
-        key={role} 
-        screenOptions={{ 
-          headerShown: false,
-          cardStyle: { backgroundColor: isDarkMode ? '#020617' : '#f5f5f5' }
-        }}
-      >
-        {token == null ? (
-          <Stack.Group>
-            <Stack.Screen name="Welcome" component={WelcomeScreen} />
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Signup" component={SignupScreen} />
-            <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
-          </Stack.Group>
-        ) : (
-          <Stack.Group>
-            {/* --- DASHBOARD LOGIC --- */}
-            <Stack.Screen 
-              name="UserHome" 
-              component={(role === 'RESPONDER' || role === 'POLICE') ? PoliceDashboardScreen : HomeScreen} 
-            />
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        
+        <Stack.Navigator 
+          key={role} 
+          screenOptions={{ 
+            headerShown: false,
+            cardStyle: { backgroundColor: isDarkMode ? '#020617' : '#f5f5f5' }
+          }}
+        >
+          {token == null ? (
+            <Stack.Group>
+              <Stack.Screen name="Welcome" component={WelcomeScreen} />
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Signup" component={SignupScreen} />
+              <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+            </Stack.Group>
+          ) : (
+            <Stack.Group>
+              {/* --- 🏠 DYNAMIC ROOT DASHBOARD --- */}
+              <Stack.Screen 
+                name="UserHome" 
+                component={
+                  (role?.toUpperCase() === 'RESPONDER' || role?.toUpperCase() === 'POLICE' || role?.toUpperCase() === 'HELPER') 
+                  ? PoliceDashboardScreen 
+                  : HomeScreen
+                } 
+              />
 
-            {/* --- 🔵 CITIZEN FEATURES --- */}
-            <Stack.Screen name="SOS" component={SOSScreen} />
-            <Stack.Screen name="SOSList" component={SOSListScreen} />
-            <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} />
-            <Stack.Screen name="AddContact" component={AddContactScreen} />
-            <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} />
-            <Stack.Screen name="IncidentReport" component={IncidentReportScreen} />
-            <Stack.Screen name="PastReports" component={PastReportsScreen} />
-            <Stack.Screen name="PredictionAnalytics" component={PredictionAnalyticsScreen} />
-            <Stack.Screen name="ReliefCenters" component={ReliefCenterScreen} />
-            <Stack.Screen name="ReliefCenterDetails" component={ReliefCenterDetails} />
-            <Stack.Screen name="SafeZones" component={SafeZonesScreen} />
-            <Stack.Screen name="ReportDisaster" component={ReportDisasterScreen} />
+              {/* --- 🔵 CITIZEN FEATURES --- */}
+              <Stack.Screen name="SOS" component={SOSScreen} />
+              <Stack.Screen name="SOSList" component={SOSListScreen} />
+              <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} />
+              <Stack.Screen name="AddContact" component={AddContactScreen} />
+              <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} />
+              <Stack.Screen name="IncidentReport" component={IncidentReportScreen} />
+              <Stack.Screen name="PastReports" component={PastReportsScreen} />
+              <Stack.Screen name="PredictionAnalytics" component={PredictionAnalyticsScreen} />
+              <Stack.Screen name="ReliefCenters" component={ReliefCenterScreen} />
+              <Stack.Screen name="ReliefCenterDetails" component={ReliefCenterDetails} />
+              <Stack.Screen name="SafeZones" component={SafeZonesScreen} />
+              <Stack.Screen name="ReportDisaster" component={ReportDisasterScreen} />
 
-            {/* --- 🟡 SHARED / SETTINGS --- */}
-            <Stack.Screen name="Profile" component={AccountScreen} />
-            <Stack.Screen name="AccountSettings" component={AccountSettings} />
-            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-            <Stack.Screen name="BillingScreen" component={BillingScreen} />
-            <Stack.Screen name="LinkedAccountsScreen" component={LinkedAccountsScreen} />
-            <Stack.Screen name="PrivacySettings" component={PrivacySettings} />
-            <Stack.Screen name="SecuritySettings" component={SecuritySettings} />
-            <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
-            <Stack.Screen name="Help" component={HelpScreen} />
-            <Stack.Screen name="About" component={AboutScreen} />
-            <Stack.Screen name="GeneralMap" component={MapScreen} />
+              {/* --- 🟡 SHARED / SETTINGS --- */}
+              <Stack.Screen name="Profile" component={AccountScreen} />
+              <Stack.Screen name="AccountSettings" component={AccountSettings} />
+              <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+              <Stack.Screen name="BillingScreen" component={BillingScreen} />
+              <Stack.Screen name="LinkedAccountsScreen" component={LinkedAccountsScreen} />
+              <Stack.Screen name="PrivacySettings" component={PrivacySettings} />
+              <Stack.Screen name="SecuritySettings" component={SecuritySettings} />
+              <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
+              <Stack.Screen name="Help" component={HelpScreen} />
+              <Stack.Screen name="About" component={AboutScreen} />
+              <Stack.Screen name="GeneralMap" component={MapScreen} />
 
-            {/* --- 🔴 POLICE / RESPONDER FEATURES --- */}
-            <Stack.Screen name="ResponderDashboard" component={ResponderDashboard} />
-            <Stack.Screen name="HelperDashboard" component={HelperDashboardScreen} />
-            <Stack.Screen name="PoliceDashboard" component={PoliceDashboardScreen} />
-            <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} />
-            <Stack.Screen name="AlertScreen" component={AlertScreen} />
-            <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} />
-            <Stack.Screen name="Volunteer" component={VolunteerScreen} />
-            <Stack.Screen name="PoliceSOSList" component={PoliceSOSList} />
-          </Stack.Group>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+              {/* --- 🔴 POLICE / RESPONDER FEATURES --- */}
+              <Stack.Screen name="PoliceDashboard" component={PoliceDashboardScreen} />
+              <Stack.Screen name="PoliceSettings" component={PoliceSettingsScreen} />
+              <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} />
+              <Stack.Screen name="AlertScreen" component={AlertScreen} />
+              <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} />
+              <Stack.Screen name="Volunteer" component={VolunteerScreen} />
+              <Stack.Screen name="PoliceSOSList" component={PoliceSOSList} />
+            </Stack.Group>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 
