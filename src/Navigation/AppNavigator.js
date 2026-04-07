@@ -15,7 +15,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthContext } from './src/context/AuthContext';
 import { ThemeContext } from './src/context/ThemeContext';
 
-// --- 📂 SHARED SCREENS ---
+//Shared Screens 
 import WelcomeScreen from './src/screens/Shared Folder/WelcomeScreen';
 import LoginScreen from './src/screens/Shared Folder/LoginScreen';
 import SignupScreen from './src/screens/Shared Folder/SignupScreen';
@@ -32,7 +32,7 @@ import HelpScreen from './src/screens/Shared Folder/HelpScreen';
 import AboutScreen from './src/screens/Shared Folder/AboutScreen';
 import MapScreen from './src/screens/Shared Folder/Map';
 
-// --- 📂 CITIZEN SCREENS ---
+//Citizen Screens
 import HomeScreen from './src/screens/Citizen Folder/HomeScreen';
 import SOSScreen from './src/screens/Citizen Folder/SOSScreen';
 import SOSListScreen from './src/screens/Citizen Folder/SOSListScreen';
@@ -47,15 +47,14 @@ import ReliefCenterDetails from './src/screens/Citizen Folder/ReliefCenterDetail
 import SafeZonesScreen from './src/screens/Citizen Folder/SafeZonesScreen';
 import ReportDisasterScreen from './src/screens/Citizen Folder/ReportDisasterScreen';
 
-// --- 📂 POLICE / RESPONDER SCREENS ---
-// ✅ ResponderDashboard IMPORT DELETED ENTIRELY
-import PoliceDashboardScreen from './src/screens/Police Folder/PoliceDashboardScreen';
-import PoliceSettingsScreen from './src/screens/Police Folder/PoliceSettingsScreen'; 
-import RealTimeMapScreen from './src/screens/Police Folder/RealTimeMapScreen';
-import AlertScreen from './src/screens/Police Folder/AlertScreen';
-import AlertDetailsScreen from './src/screens/Police Folder/AlertDetailsScreen';
-import VolunteerScreen from './src/screens/Police Folder/VolunteerScreen';
-import PoliceSOSList from './src/screens/Police Folder/SOSList';
+//Police Screens 
+import PoliceDashboardScreen from './src/screens/PoliceFolder/PoliceDashboardScreen';
+import PoliceSettingsScreen from './src/screens/PoliceFolder/PoliceSettingsScreen'; 
+import RealTimeMapScreen from './src/screens/PoliceFolder/RealTimeMapScreen';
+import AlertScreen from './src/screens/PoliceFolder/AlertScreen';
+import AlertDetailsScreen from './src/screens/PoliceFolder/AlertDetailsScreen';
+import VolunteerScreen from './src/screens/PoliceFolder/VolunteerScreen';
+import PoliceSOSList from './src/screens/PoliceFolder/SOSList';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -98,9 +97,8 @@ export default function App() {
           ) : (
             <Stack.Group>
               {/* --- 🏠 DYNAMIC ROOT DASHBOARD --- */}
-              {/* Both POLICE and RESPONDER roles now point to PoliceDashboardScreen */}
               <Stack.Screen 
-                name="UserHome" 
+                name="HomeScreen" 
                 component={
                   (role?.toUpperCase() === 'RESPONDER' || role?.toUpperCase() === 'POLICE' || role?.toUpperCase() === 'HELPER') 
                   ? PoliceDashboardScreen 
