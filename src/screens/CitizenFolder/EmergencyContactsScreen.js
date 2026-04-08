@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,19 +11,34 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native"; 
+// Update: changed getNotes to getAllNotes to match your AsyncStorage service
+import { getAllNotes } from "../../services/dbService"; 
 
-// Updated import path based on typical structure
 export default function EmergencyContactsScreen({ navigation }) {
+  const [personalContacts, setPersonalContacts] = useState([]);
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      loadContacts();
+    }
+  }, [isFocused]);
+
+  const loadContacts = async () => {
+    try {
+      // Logic: Fetch all keys with the @customer_note_ prefix
+      const data = await getAllNotes();
+      setPersonalContacts(data || []);
+    } catch (error) {
+      console.error("Error loading contacts:", error);
+      setPersonalContacts([]); // Fallback to empty array on error
+    }
+  };
 
   const handleAction = (type, number) => {
-    let url = "";
-    if (type === 'tel') {
-      url = `tel:${number}`;
-    } else if (type === 'sms') {
-      const message = "EMERGENCY! I need immediate help. Please track my phone.";
-      url = `sms:${number}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
-    }
-
+    let url = type === 'tel' ? `tel:${number}` : `sms:${number}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent("EMERGENCY! I need immediate help.")}`;
+    
     Linking.openURL(url).catch(() => {
       Alert.alert("Error", "Your device does not support this action.");
     });
@@ -57,16 +72,33 @@ export default function EmergencyContactsScreen({ navigation }) {
     <LinearGradient colors={["#0f172a", "#1e293b"]} style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-           <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nepal Emergency Services</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <Text style={styles.sectionTitle}>Official Services</Text>
         <ContactCard title="Nepal Police" number="100" icon="local-police" color="#0d47a1" />
         <ContactCard title="Fire Brigade" number="101" icon="fire-truck" color="#d32f2f" />
         <ContactCard title="Ambulance" number="102" icon="medical-services" color="#388e3c" />
-        <ContactCard title="Traffic Police" number="103" icon="traffic" color="#fbc02d" />
+
+        {/* Dynamic Personal Contacts Section */}
+        {personalContacts.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Personal Contacts</Text>
+            {personalContacts.map((contact, index) => (
+              <ContactCard 
+                key={index}
+                // content is "Name: Rahul", so we strip the prefix for display
+                title={contact.content ? contact.content.replace('Name: ', '') : 'Unknown'} 
+                number={contact.title} // title holds the phone number from getAllNotes
+                icon="person" 
+                color="#3b82f6" 
+              />
+            ))}
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>Personal Safety Tip</Text>
         <View style={styles.addBox}>
@@ -76,10 +108,9 @@ export default function EmergencyContactsScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* --- UPDATED FAB BUTTON --- */}
       <TouchableOpacity 
         style={styles.fab} 
-        onPress={() => navigation.navigate('AddContact')} // Navigates to AddContactScreen
+        onPress={() => navigation.navigate('AddContact')}
       >
         <Ionicons name="person-add" size={26} color="#fff" />
       </TouchableOpacity>
@@ -87,6 +118,7 @@ export default function EmergencyContactsScreen({ navigation }) {
   );
 }
 
+// Styles remain exactly as you provided
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center' },

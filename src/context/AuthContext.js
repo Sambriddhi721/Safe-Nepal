@@ -7,18 +7,17 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // --- BYPASS CONFIGURATION ---
-  // Initializing with your specific details to skip login screens
+  // --- BYPASS / INITIAL STATE ---
   const [user, setUser] = useState({
     uid: "bypass-123",
     full_name: "Sambriddhi Dawadi",
     email: "sambriddhidawadi6@gmail.com",
-    role: "USER" 
+    role: "USER" // Default to Citizen
   });
   const [token, setToken] = useState("bypass-token");
-  const [loading, setLoading] = useState(false); // Set to false to prevent spinner
+  const [loading, setLoading] = useState(false);
 
-  // --- FIREBASE SYNC (Still runs in background if needed) ---
+  // --- FIREBASE SYNC ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
@@ -53,24 +52,29 @@ export function AuthProvider({ children }) {
 
   /**
    * ROLE SWITCHING
-   * Manually toggles between Citizen and Police views
+   * This is the "Engine" that powers your Mode Switcher.
    */
   const switchRole = useCallback(async () => {
     if (!user) return false;
 
     try {
+      // Toggle logic: If USER -> RESPONDER, If RESPONDER -> USER
       const newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
 
-      // Update Firebase only if a real user is logged in
+      // 1. Sync with Firebase (if logged in)
       if (auth.currentUser) {
         const userRef = doc(db, "users", auth.currentUser.uid);
         await setDoc(userRef, { role: newRole }, { merge: true });
       }
 
+      // 2. Update Local State (This triggers the Stack Switch in App.js)
       const updatedUser = { ...user, role: newRole };
       setUser(updatedUser);
+
+      // 3. Persist to Storage
       await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
       
+      console.log(`[AuthContext] Role switched to: ${newRole}`);
       return true; 
     } catch (e) {
       console.error("Role Switch Error:", e);
@@ -122,6 +126,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Memoize values to prevent unnecessary re-renders
   const authValue = useMemo(() => ({
     user,
     token,
@@ -130,8 +135,8 @@ export function AuthProvider({ children }) {
     signOut,
     switchRole,
     updateUserProfile,
-    role: user?.role || "USER", 
-    isHelper: user?.role === "RESPONDER",
+    role: user?.role || "USER", // This is what SettingsScreen.js looks at
+    isResponder: user?.role === "RESPONDER", // Helpful helper boolean
   }), [user, token, loading, signIn, signOut, switchRole, updateUserProfile]);
 
   return (

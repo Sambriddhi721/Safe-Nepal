@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, 
-  ScrollView, Alert, StatusBar, Vibration, ActivityIndicator, Platform
+  ScrollView, Alert, StatusBar, Vibration, ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -36,21 +36,22 @@ export default function SettingsScreen({ navigation }) {
   const isDarkMode = theme === 'dark';
   const isResponder = role === "RESPONDER";
 
+  // Tactical Role Switch Logic
   const handlePoliceModeSwitch = async () => {
     // 1. Initial Tactical Feedback
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Vibration.vibrate(100);
 
-    // 2. Biometric Security Gate (The "Wow" Factor)
+    // 2. Biometric Security Gate
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
     if (hasHardware && isEnrolled) {
-      const auth = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Verify Identity for Responder Access',
+      const authResult = await LocalAuthentication.authenticateAsync({
+        promptMessage: isResponder ? 'Verify Identity to Exit Responder Mode' : 'Verify Identity for Responder Access',
         fallbackLabel: 'Use Passcode',
       });
-      if (!auth.success) return; 
+      if (!authResult.success) return; 
     }
 
     // 3. Confirmation Dialog
@@ -62,26 +63,20 @@ export default function SettingsScreen({ navigation }) {
         { 
           text: "Confirm Switch", 
           onPress: async () => {
-            setIsSwitching(true); // Show the tactical black screen
+            setIsSwitching(true); // Trigger tactical overlay
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
             try {
-              if (switchRole) await switchRole(); // Update the Auth state
+              // 4. Update the Context (Triggers App.js Stack Switch)
+              await switchRole(); 
 
-              // 4. Tactical 2-Second Delay for the "Encrypted Session" feel
+              // 5. Tactical delay for "System Uplink" effect
               setTimeout(() => {
                 setIsSwitching(false);
-                if (!isResponder) {
-                  // This takes you to the Police Dashboard
-                  navigation.replace("PoliceDashboard"); 
-                } else {
-                  // This takes you back to Citizen home
-                  navigation.replace("Home"); 
-                }
               }, 2000);
             } catch (error) {
               setIsSwitching(false);
-              Alert.alert("System Error", "Authorization failed.");
+              Alert.alert("System Error", "Authorization failed. Check your connection.");
             }
           } 
         }
@@ -101,7 +96,7 @@ export default function SettingsScreen({ navigation }) {
             {isResponder ? "Restoring Citizen Interface..." : "Establishing Encrypted Session..."}
           </Text>
           <Text style={styles.subOverlayText}>
-            {isResponder ? "DECRYPTING SESSION" : "SWITCHING TO POLICE MODE"}
+            {isResponder ? "DECRYPTING NODE" : "UPLINKING TO POLICE NETWORK"}
           </Text>
         </View>
       )}
@@ -125,15 +120,15 @@ export default function SettingsScreen({ navigation }) {
             <View style={styles.divider} />
             <MenuRow icon="shield-checkmark" title="Privacy" sub="Data & Location Permissions" isDark={isDarkMode} iconColor="#10b981" onPress={() => navigation.navigate("PrivacySettings")} />
             <View style={styles.divider} />
-            <MenuRow icon="person" title="Account" sub="Academic Profile & Details" isDark={isDarkMode} iconColor="#6366f1" onPress={() => navigation.navigate("AccountSettings")} />
+            <MenuRow icon="person" title="Account" sub="Profile & Academic Details" isDark={isDarkMode} iconColor="#6366f1" onPress={() => navigation.navigate("AccountSettings")} />
           </View>
 
           {/* 2. SUPPORT */}
           <Text style={styles.sectionLabel}>Safe Nepal Support</Text>
           <View style={[styles.card, { backgroundColor: isDarkMode ? "#0f172a" : "#ffffff" }]}>
-            <MenuRow icon="help-circle" title="Help Center" sub="SARIMAX Logic & FAQ" isDark={isDarkMode} iconColor="#8b5cf6" onPress={() => navigation.navigate("Help")} />
+            <MenuRow icon="help-circle" title="Help Center" sub="FAQ & Documentation" isDark={isDarkMode} iconColor="#8b5cf6" onPress={() => navigation.navigate("Help")} />
             <View style={styles.divider} />
-            <MenuRow icon="information-circle" title="Version" sub="v2.1.0 Beta (2026)" isDark={isDarkMode} iconColor="#64748b" onPress={() => navigation.navigate("About")} />
+            <MenuRow icon="information-circle" title="Version" sub="v2.1.0 Beta" isDark={isDarkMode} iconColor="#64748b" onPress={() => navigation.navigate("About")} />
           </View>
 
           {/* 3. LOGOUT */}
@@ -143,7 +138,7 @@ export default function SettingsScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* 4. POLICE MODE SWITCH */}
-          <Text style={styles.sectionLabel}>Authorized Access Only</Text>
+          <Text style={styles.sectionLabel}>Security Protocol</Text>
           <TouchableOpacity 
             style={[styles.switchModeBtn, { backgroundColor: isResponder ? "#334155" : "#bef264" }]} 
             onPress={handlePoliceModeSwitch} 
@@ -157,12 +152,12 @@ export default function SettingsScreen({ navigation }) {
                 style={{ marginRight: 10 }} 
               />
               <Text style={[styles.switchModeText, { color: isResponder ? "#fff" : "#020617" }]}>
-                {isResponder ? "Return to Citizen Mode" : "Switch to Police Mode"}
+                {isResponder ? "Exit Responder Mode" : "Switch to Police Mode"}
               </Text>
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.footerBrand}>Safe Nepal • Kathmandu, Nepal</Text>
+          <Text style={styles.footerBrand}>Safe Nepal • Kathmandu</Text>
 
         </ScrollView>
       </SafeAreaView>

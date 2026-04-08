@@ -1,10 +1,9 @@
 import React, { useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { 
-  View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  StatusBar, Switch, Alert, Platform, ActivityIndicator, 
+  View, Text, StyleSheet, TouchableOpacity, 
+  StatusBar, Switch, Alert, ActivityIndicator, 
   SafeAreaView, RefreshControl, ScrollView, Dimensions 
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
@@ -14,13 +13,12 @@ import { AuthContext } from "../../context/AuthContext";
 import { ThemeContext } from '../../context/ThemeContext';
 
 const SERVER_URL = "http://192.168.111.70:5000"; 
-const { width } = Dimensions.get('window');
 
 export default function PoliceDashboardScreen({ navigation }) {
-  const { user, role } = useContext(AuthContext) || {};
+  // Destructure switchRole to allow switching back to Citizen mode
+  const { user, role, switchRole } = useContext(AuthContext) || {};
   const { theme } = useContext(ThemeContext) || { theme: 'dark' };
   const isDarkMode = theme === 'dark';
-  const mapRef = useRef(null);
   
   // States
   const [activeTab, setActiveTab] = useState('FEED'); 
@@ -39,7 +37,7 @@ export default function PoliceDashboardScreen({ navigation }) {
 
     const dataTimer = setInterval(() => {
       if (isOnDuty) fetchTacticalData(false);
-    }, 30000); // Auto-poll for new reports every 30s
+    }, 30000); 
 
     return () => {
       clearInterval(clockTimer);
@@ -83,7 +81,7 @@ export default function PoliceDashboardScreen({ navigation }) {
     fetchTacticalData();
   }, []);
 
-  // 3. Dispatch Logic
+  // 3. Dispatch & Navigation Logic
   const handleDispatch = (item) => {
     if (!isOnDuty) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -106,6 +104,19 @@ export default function PoliceDashboardScreen({ navigation }) {
         }
       ]
     );
+  };
+
+  const handleSwitchToCitizen = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
+    if (switchRole) {
+      // This will update the role to 'CITIZEN' in your AuthContext
+      // App.js will detect this change and automatically swap the navigator stack
+      await switchRole();
+    } else {
+      // Fallback navigation if context is not yet available
+      navigation.navigate("HomeScreen");
+    }
   };
 
   // --- UI Sub-Components ---
@@ -134,10 +145,7 @@ export default function PoliceDashboardScreen({ navigation }) {
           <View style={styles.headerActions}>
             <TouchableOpacity 
               style={styles.citizenSwitch} 
-              onPress={() => {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                navigation.navigate("HomeScreen");
-              }}
+              onPress={handleSwitchToCitizen}
             >
               <Ionicons name="person-circle-outline" size={18} color="#3b82f6" />
               <Text style={styles.citizenBtnText}>Citizen</Text>
@@ -175,7 +183,7 @@ export default function PoliceDashboardScreen({ navigation }) {
         {/* DUTY TOGGLE */}
         <View style={[styles.dutyCard, { borderColor: isOnDuty ? '#10b981' : '#ef4444' }]}>
           <View style={styles.dutyInfo}>
-            <View style={[styles.statusDot, { backgroundColor: isOnDuty ? '#10b981' : '#ef4444' }]} />
+            <div style={[styles.statusDot, { backgroundColor: isOnDuty ? '#10b981' : '#ef4444' }]} />
             <Text style={[styles.dutyText, { color: isOnDuty ? '#10b981' : '#ef4444' }]}>
               {isOnDuty ? "UNIT ACTIVE" : "UNIT STANDBY"}
             </Text>
@@ -255,29 +263,24 @@ const styles = StyleSheet.create({
   iconCircle: { backgroundColor: '#1e293b', padding: 10, borderRadius: 12, marginLeft: 10 },
   citizenSwitch: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#3b82f640' },
   citizenBtnText: { color: '#3b82f6', fontSize: 12, fontWeight: '700', marginLeft: 5 },
-  
   weatherCard: { backgroundColor: '#1e293b80', marginHorizontal: 20, padding: 25, borderRadius: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#ffffff10' },
   locationRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   locationCity: { color: '#64748b', fontSize: 14, fontWeight: '600', marginLeft: 5 },
   weatherCondition: { color: '#fff', fontSize: 11, fontWeight: '800', opacity: 0.6 },
   tempText: { color: '#fff', fontSize: 44, fontWeight: '300' },
-
   statsRow: { flexDirection: 'row', paddingHorizontal: 20, marginTop: 20, justifyContent: 'space-between' },
   statCard: { width: '48%', backgroundColor: '#1e293b', padding: 20, borderRadius: 20, borderLeftWidth: 4 },
   statNumber: { color: '#fff', fontSize: 28, fontWeight: '800' },
   statLabel: { color: '#64748b', fontSize: 12, fontWeight: '600', marginTop: 4 },
-
   dutyCard: { margin: 20, padding: 18, borderRadius: 20, backgroundColor: '#0f172a', borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   dutyInfo: { flexDirection: 'row', alignItems: 'center' },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
   dutyText: { fontSize: 12, fontWeight: '900', letterSpacing: 1 },
-
   tabBar: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 20, backgroundColor: '#0f172a', borderRadius: 15, padding: 5 },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 },
   activeTab: { backgroundColor: '#3b82f6' },
   tabText: { color: '#64748b', fontSize: 12, fontWeight: '800' },
   activeTabText: { color: '#fff' },
-
   sosCard: { backgroundColor: '#1e293b', borderRadius: 20, marginBottom: 15, flexDirection: 'row', overflow: 'hidden' },
   severityStrip: { width: 6 },
   sosCardBody: { flex: 1, padding: 18 },
@@ -287,7 +290,6 @@ const styles = StyleSheet.create({
   sosLoc: { color: '#94a3b8', fontSize: 14, marginVertical: 10 },
   dispatchRow: { flexDirection: 'row', alignItems: 'center' },
   dispatchText: { color: '#10b981', fontSize: 10, fontWeight: '900', marginRight: 5 },
-
   toolsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10, justifyContent: 'space-around', paddingBottom: 30 },
   toolCard: { width: '30%', alignItems: 'center', marginBottom: 25 },
   toolIconCircle: { width: 65, height: 65, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },

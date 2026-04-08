@@ -8,7 +8,6 @@ const SETTING_PREFIX = '@app_setting_';
  * =========================
  * CORE SETTINGS LOGIC
  * =========================
- * Handles complex data like Booleans (Toggles) and Objects
  */
 export const saveSetting = async (key, value) => {
     try {
@@ -33,17 +32,38 @@ export const getSetting = async (key, defaultValue) => {
 
 /**
  * =========================
- * NOTE/CRM LOGIC
+ * NOTE/CRM LOGIC (For Emergency Contacts)
  * =========================
- * Maintains compatibility with your previous SQLite function names
  */
 export const saveNote = async (contactId, note) => {
     try {
         const key = `${NOTE_PREFIX}${contactId}`;
         await AsyncStorage.setItem(key, note);
-        console.log('Note saved to local storage');
+        console.log('Contact saved to AsyncStorage');
     } catch (error) {
-        console.error('Error saving note:', error);
+        console.error('Error saving contact:', error);
+    }
+};
+
+// NEW: Function to get ALL saved contacts for your list
+export const getAllNotes = async () => {
+    try {
+        const allKeys = await AsyncStorage.getAllKeys();
+        // Filter keys that belong to our notes/contacts
+        const contactKeys = allKeys.filter(key => key.startsWith(NOTE_PREFIX));
+        
+        // Get all data for those keys
+        const result = await AsyncStorage.multiGet(contactKeys);
+
+        // Map them into an object format the UI expects
+        return result.map(([key, value]) => ({
+            id: key,
+            title: key.replace(NOTE_PREFIX, ''), // The Phone Number
+            content: value                       // The "Name: Rahul" string
+        }));
+    } catch (error) {
+        console.error('Error getting all contacts:', error);
+        return [];
     }
 };
 
@@ -62,7 +82,6 @@ export const getNote = async (contactId) => {
  * =========================
  * COMPATIBILITY LAYER
  * =========================
- * Keeps the app from crashing if old SQLite init code is called
  */
 export const getDBConnection = () => null;
 export const createTable = () => console.log('Storage engine: AsyncStorage active.');

@@ -54,7 +54,7 @@ const AddContactScreen = ({ navigation }) => {
             <Ionicons name="person-outline" size={20} color="#94A3B8" style={styles.icon} />
             <TextInput
               style={styles.input}
-              placeholder="e.g. Rahul Parajuli"
+              placeholder="e.g. Aayam Dawadi"
               placeholderTextColor="#64748B"
               value={name}
               onChangeText={setName}
@@ -66,7 +66,7 @@ const AddContactScreen = ({ navigation }) => {
             <Ionicons name="call-outline" size={20} color="#94A3B8" style={styles.icon} />
             <TextInput
               style={styles.input}
-              placeholder="+977 98XXXXXXXX"
+              placeholder="98XXXXXXXX"
               placeholderTextColor="#64748B"
               value={phone}
               onChangeText={setPhone}
@@ -84,7 +84,7 @@ const AddContactScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#020617' }, // Matches your Privacy/Auth theme
+  container: { flex: 1, backgroundColor: '#020617' },
   flex: { flex: 1 },
   header: { 
     flexDirection: 'row', 
