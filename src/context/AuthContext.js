@@ -7,21 +7,40 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // --- BYPASS / INITIAL STATE ---
+  // --- BYPASS MODE: INITIAL STATE ---
+  // We hardcode the user object here so 'user' is never null.
   const [user, setUser] = useState({
     uid: "bypass-123",
     full_name: "Sambriddhi Dawadi",
     email: "sambriddhidawadi6@gmail.com",
-    role: "USER" // Default to Citizen
+    role: "USER" // Set to "RESPONDER" here if you want to start in Police Mode
   });
+  
   const [token, setToken] = useState("bypass-token");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Set to false to skip the loading spinner
 
-  // --- FIREBASE SYNC ---
+  // --- 1. INITIAL LOAD (Optional during bypass) ---
+  useEffect(() => {
+    const loadPersistedUser = async () => {
+      try {
+        const savedUser = await AsyncStorage.getItem('user_data');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+      } catch (e) {
+        console.error("Failed to load persisted user", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPersistedUser();
+  }, []);
+
+  // --- 2. FIREBASE SYNC ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
+      if (firebaseUser) {
+        try {
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userSnap = await getDoc(userDocRef);
 
@@ -35,15 +54,16 @@ export function AuthProvider({ children }) {
               full_name: firebaseUser.displayName || "Sambriddhi Dawadi",
               role: "USER" 
             };
+            await setDoc(userDocRef, userData);
           }
 
           const idToken = await firebaseUser.getIdToken();
           setUser(userData);
           setToken(idToken);
           await AsyncStorage.setItem('user_data', JSON.stringify(userData));
+        } catch (e) {
+          console.error("Auth sync error:", e);
         }
-      } catch (e) {
-        console.error("Auth sync error:", e);
       }
     });
 
@@ -52,29 +72,29 @@ export function AuthProvider({ children }) {
 
   /**
    * ROLE SWITCHING
-   * This is the "Engine" that powers your Mode Switcher.
+   * Still works in Bypass mode!
    */
-  const switchRole = useCallback(async () => {
+  const switchRole = useCallback(async (targetRole = null) => {
     if (!user) return false;
 
     try {
-      // Toggle logic: If USER -> RESPONDER, If RESPONDER -> USER
-      const newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
+      let newRole;
+      if (targetRole) {
+        newRole = targetRole === 'CITIZEN' ? 'USER' : targetRole;
+      } else {
+        newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
+      }
 
-      // 1. Sync with Firebase (if logged in)
+      // Sync with Firebase only if there is an actual active Firebase session
       if (auth.currentUser) {
         const userRef = doc(db, "users", auth.currentUser.uid);
         await setDoc(userRef, { role: newRole }, { merge: true });
       }
 
-      // 2. Update Local State (This triggers the Stack Switch in App.js)
       const updatedUser = { ...user, role: newRole };
       setUser(updatedUser);
-
-      // 3. Persist to Storage
       await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
       
-      console.log(`[AuthContext] Role switched to: ${newRole}`);
       return true; 
     } catch (e) {
       console.error("Role Switch Error:", e);
@@ -82,62 +102,14 @@ export function AuthProvider({ children }) {
     }
   }, [user]); 
 
-  /**
-   * PROFILE UPDATES
-   */
-  const updateUserProfile = useCallback(async (formData) => {
-    if (!user) return { success: false };
-    try {
-      const updatedData = { 
-        ...formData,
-        full_name: formData.name || user.full_name, 
-        updatedAt: new Date().toISOString()
-      };
-
-      if (auth.currentUser) {
-        const userRef = doc(db, "users", auth.currentUser.uid);
-        await setDoc(userRef, updatedData, { merge: true });
-      }
-
-      const newUser = { ...user, ...updatedData };
-      setUser(newUser);
-      await AsyncStorage.setItem('user_data', JSON.stringify(newUser));
-
-      return { success: true };
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-  }, [user]);
-
-  const signIn = useCallback(async (userData, userToken) => {
-    setUser(userData);
-    setToken(userToken);
-    await AsyncStorage.setItem('user_data', JSON.stringify(userData));
-  }, []);
-
-  const signOut = useCallback(async () => {
-    try {
-      await auth.signOut();
-      setUser(null);
-      setToken(null);
-      await AsyncStorage.multiRemove(['user_data', 'user_token']);
-    } catch (e) {
-      console.error("Logout Error", e);
-    }
-  }, []);
-
-  // Memoize values to prevent unnecessary re-renders
   const authValue = useMemo(() => ({
     user,
     token,
     loading,
-    signIn,
-    signOut,
     switchRole,
-    updateUserProfile,
-    role: user?.role || "USER", // This is what SettingsScreen.js looks at
-    isResponder: user?.role === "RESPONDER", // Helpful helper boolean
-  }), [user, token, loading, signIn, signOut, switchRole, updateUserProfile]);
+    role: user?.role || "USER",
+    isResponder: user?.role === "RESPONDER",
+  }), [user, token, loading, switchRole]);
 
   return (
     <AuthContext.Provider value={authValue}>

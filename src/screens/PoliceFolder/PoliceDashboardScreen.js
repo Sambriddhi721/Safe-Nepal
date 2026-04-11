@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, 
   StatusBar, Switch, Alert, ActivityIndicator, 
@@ -15,8 +15,7 @@ import { ThemeContext } from '../../context/ThemeContext';
 const SERVER_URL = "http://192.168.111.70:5000"; 
 
 export default function PoliceDashboardScreen({ navigation }) {
-  // Destructure switchRole to allow switching back to Citizen mode
-  const { user, role, switchRole } = useContext(AuthContext) || {};
+  const { role, switchRole } = useContext(AuthContext) || {};
   const { theme } = useContext(ThemeContext) || { theme: 'dark' };
   const isDarkMode = theme === 'dark';
   
@@ -27,7 +26,7 @@ export default function PoliceDashboardScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [sosData, setSosData] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
   // 1. Tactical Clock & Auto-Refresh
   useEffect(() => {
@@ -81,7 +80,6 @@ export default function PoliceDashboardScreen({ navigation }) {
     fetchTacticalData();
   }, []);
 
-  // 3. Dispatch & Navigation Logic
   const handleDispatch = (item) => {
     if (!isOnDuty) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -108,13 +106,10 @@ export default function PoliceDashboardScreen({ navigation }) {
 
   const handleSwitchToCitizen = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    
     if (switchRole) {
-      // This will update the role to 'CITIZEN' in your AuthContext
-      // App.js will detect this change and automatically swap the navigator stack
-      await switchRole();
+      // Explicitly pass 'CITIZEN' to match the logic used in SettingsScreen
+      await switchRole('CITIZEN');
     } else {
-      // Fallback navigation if context is not yet available
       navigation.navigate("HomeScreen");
     }
   };
@@ -143,10 +138,7 @@ export default function PoliceDashboardScreen({ navigation }) {
             <Text style={styles.welcomeText}>{currentTime}</Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity 
-              style={styles.citizenSwitch} 
-              onPress={handleSwitchToCitizen}
-            >
+            <TouchableOpacity style={styles.citizenSwitch} onPress={handleSwitchToCitizen}>
               <Ionicons name="person-circle-outline" size={18} color="#3b82f6" />
               <Text style={styles.citizenBtnText}>Citizen</Text>
             </TouchableOpacity>
@@ -180,10 +172,10 @@ export default function PoliceDashboardScreen({ navigation }) {
           </View>
         </View>
 
-        {/* DUTY TOGGLE */}
+        {/* DUTY TOGGLE - FIXED: Changed <div> to <View> */}
         <View style={[styles.dutyCard, { borderColor: isOnDuty ? '#10b981' : '#ef4444' }]}>
           <View style={styles.dutyInfo}>
-            <div style={[styles.statusDot, { backgroundColor: isOnDuty ? '#10b981' : '#ef4444' }]} />
+            <View style={[styles.statusDot, { backgroundColor: isOnDuty ? '#10b981' : '#ef4444' }]} />
             <Text style={[styles.dutyText, { color: isOnDuty ? '#10b981' : '#ef4444' }]}>
               {isOnDuty ? "UNIT ACTIVE" : "UNIT STANDBY"}
             </Text>

@@ -1,158 +1,155 @@
 import React, { useContext, useState, useEffect } from "react";
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  StatusBar, ActivityIndicator, RefreshControl 
+  StatusBar, ActivityIndicator, RefreshControl, TextInput
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-
-// Context Imports
 import { ThemeContext } from "../../context/ThemeContext";
-
-const SERVER_URL = "http://192.168.111.70:5000"; 
 
 export default function AlertScreen({ navigation }) {
   const { theme } = useContext(ThemeContext) || {};
   const isDarkMode = theme === 'dark';
 
+  const [activeTab, setActiveTab] = useState("Active");
+  const [filter, setFilter] = useState("All");
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
-  // 1. Fetch Active Public Alerts
-  const fetchAlerts = async () => {
-    try {
-      const response = await fetch(`${SERVER_URL}/api/reports`); // Using your existing endpoint
-      const data = await response.json();
-      // Filter for high severity or public broadcasts if your backend supports it
-      setAlerts(data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
-    } catch (error) {
-      console.error("Alert Fetch Error:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  // Mock data to match your screenshot exactly
+  const mockData = [
+    { id: '1', title: 'High Flood', severity: 'High Severity', location: 'Sindhupalchok District', time: '25 mins ago', type: 'Flood' },
+    { id: '2', title: 'Risk of Flash Flood', severity: 'High Severity', location: 'Gorkha Municipality', time: '2 hours ago', type: 'Flood' },
+    { id: '3', title: 'Landslide Warning', severity: 'Moderate Severity', location: 'Manang Location', time: '8 hours ago', type: 'Landslide' },
+  ];
 
   useEffect(() => {
-    fetchAlerts();
+    // Simulate API fetch
+    setTimeout(() => {
+      setAlerts(mockData);
+      setLoading(false);
+    }, 1000);
   }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchAlerts();
-  };
+  const renderFilterChip = (label) => (
+    <TouchableOpacity 
+      onPress={() => setFilter(label)}
+      style={[styles.chip, filter === label && styles.activeChip]}
+    >
+      <Text style={[styles.chipText, filter === label && styles.activeChipText]}>{label}</Text>
+    </TouchableOpacity>
+  );
 
-  // 2. Render Alert Item
   const renderAlertItem = ({ item }) => {
-    const isHighRisk = item.severity === "High" || item.category === "Flood";
+    const isFlood = item.type === 'Flood';
+    const accentColor = item.severity.includes('High') ? '#ef4444' : '#3b82f6';
 
     return (
-      <View style={[styles.alertCard, { backgroundColor: isDarkMode ? "#1e293b" : "#ffffff" }]}>
-        <View style={[styles.statusIndicator, { backgroundColor: isHighRisk ? "#ef4444" : "#f59e0b" }]} />
-        
-        <View style={styles.cardContent}>
-          <View style={styles.cardHeader}>
-            <View style={styles.categoryBadge}>
-              <MaterialCommunityIcons 
-                name={isHighRisk ? "alert-decagram" : "information-outline"} 
-                size={16} 
-                color={isHighRisk ? "#ef4444" : "#f59e0b"} 
-              />
-              <Text style={[styles.categoryText, { color: isHighRisk ? "#ef4444" : "#f59e0b" }]}>
-                {item.category?.toUpperCase()}
-              </Text>
-            </View>
-            <Text style={styles.timeText}>
-              {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-          </View>
-
-          <Text style={[styles.locationText, { color: isDarkMode ? "#F1F5F9" : "#0f172a" }]}>
-            {item.location}
-          </Text>
-          
-          <Text style={styles.descriptionText} numberOfLines={2}>
-            {item.description || "Active risk detected in this sector. Exercise caution and follow local safety protocols."}
-          </Text>
-
-          <TouchableOpacity 
-            style={styles.detailsBtn}
-            onPress={() => navigation.navigate("AlertDetails", { alert: item })}
-          >
-            <Text style={styles.detailsBtnText}>View Safety Map</Text>
-            <Ionicons name="arrow-forward" size={14} color="#3b82f6" />
-          </TouchableOpacity>
+      <TouchableOpacity style={[styles.alertCard, { backgroundColor: isDarkMode ? "#1e293b" : "#ffffff" }]}>
+        <View style={[styles.sideIndicator, { backgroundColor: accentColor }]} />
+        <View style={styles.iconContainer}>
+            <MaterialCommunityIcons 
+                name={isFlood ? "waves" : "terrain"} 
+                size={24} 
+                color={isDarkMode ? "#ff5252" : "#444"} 
+            />
         </View>
-      </View>
+        <View style={styles.cardContent}>
+          <View style={styles.cardRow}>
+            <Text style={[styles.cardTitle, { color: isDarkMode ? "#fff" : "#000" }]}>{item.title}</Text>
+            <Text style={styles.timeText}>{item.time}</Text>
+          </View>
+          <Text style={[styles.severityText, { color: accentColor }]}>{item.severity}</Text>
+          <View style={styles.locationRow}>
+            <Ionicons name="location-outline" size={14} color="#64748b" />
+            <Text style={styles.locationText}>{item.location}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? "#020617" : "#f8fafc" }]}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+    <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? "#0f172a" : "#f8fafc" }]}>
+      <StatusBar barStyle="light-content" />
       
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={24} color={isDarkMode ? "#fff" : "#000"} />
-          </TouchableOpacity>
-          <View>
-            <Text style={[styles.headerTitle, { color: isDarkMode ? "#fff" : "#000" }]}>Emergency Alerts</Text>
-            <Text style={styles.headerSub}>Real-time updates for Kathmandu</Text>
-          </View>
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Alert</Text>
+        <TouchableOpacity><Ionicons name="notifications-outline" size={24} color="white" /></TouchableOpacity>
+      </View>
 
-        {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color="#3b82f6" />
-            <Text style={styles.loadingText}>Scanning for risks...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={alerts}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={renderAlertItem}
-            contentContainerStyle={styles.listContent}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <MaterialCommunityIcons name="shield-check-outline" size={60} color="#10b981" />
-                <Text style={styles.emptyTitle}>All Sectors Clear</Text>
-                <Text style={styles.emptySub}>No active floods or landslides reported.</Text>
-              </View>
-            }
-          />
-        )}
-      </SafeAreaView>
-    </View>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#64748b" style={styles.searchIcon} />
+        <TextInput 
+          placeholder="Search by location..." 
+          placeholderTextColor="#64748b"
+          style={styles.searchInput}
+        />
+      </View>
+
+      {/* Filters */}
+      <View style={styles.filterRow}>
+        <TouchableOpacity style={styles.filterIcon}><Ionicons name="options-outline" size={20} color="white" /><Text style={styles.filterText}>Filter</Text></TouchableOpacity>
+        {renderFilterChip("Landslide")}
+        {renderFilterChip("Flood")}
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity onPress={() => setActiveTab("Active")} style={[styles.tab, activeTab === "Active" && styles.activeTab]}>
+          <Text style={[styles.tabText, activeTab === "Active" && styles.activeTabText]}>Active</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setActiveTab("Past")} style={[styles.tab, activeTab === "Past" && styles.activeTab]}>
+          <Text style={[styles.tabText, activeTab === "Past" && styles.activeTabText]}>Past</Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={alerts}
+        renderItem={renderAlertItem}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.list}
+      />
+
+      <TouchableOpacity style={styles.fab}>
+        <Text style={styles.fabText}>?</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15 },
-  backBtn: { marginRight: 15, padding: 5 },
-  headerTitle: { fontSize: 22, fontWeight: '800' },
-  headerSub: { fontSize: 12, color: '#64748b', fontWeight: '600' },
-  listContent: { padding: 20, paddingBottom: 40 },
-  alertCard: { borderRadius: 20, marginBottom: 16, flexDirection: 'row', overflow: 'hidden', elevation: 3, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10 },
-  statusIndicator: { width: 6 },
-  cardContent: { flex: 1, padding: 16 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  categoryBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  categoryText: { fontSize: 10, fontWeight: '900', marginLeft: 4 },
-  timeText: { fontSize: 11, color: '#64748b', fontWeight: '700' },
-  locationText: { fontSize: 17, fontWeight: '700', marginBottom: 6 },
-  descriptionText: { fontSize: 13, color: '#94a3b8', lineHeight: 18, marginBottom: 12 },
-  detailsBtn: { flexDirection: 'row', alignItems: 'center' },
-  detailsBtnText: { color: '#3b82f6', fontWeight: '800', fontSize: 13, marginRight: 5 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 15, color: '#64748b', fontWeight: '600' },
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: '#10b981', marginTop: 15 },
-  emptySub: { fontSize: 14, color: '#64748b', textAlign: 'center', marginTop: 5, paddingHorizontal: 40 }
+  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 20, alignItems: 'center' },
+  headerTitle: { fontSize: 32, fontWeight: 'bold', color: 'white' },
+  searchContainer: { flexDirection: 'row', backgroundColor: '#1e293b', margin: 20, borderRadius: 12, alignItems: 'center', paddingHorizontal: 15 },
+  searchIcon: { marginRight: 10 },
+  searchInput: { flex: 1, height: 50, color: 'white' },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 20 },
+  filterIcon: { flexDirection: 'row', backgroundColor: '#334155', padding: 10, borderRadius: 20, alignItems: 'center', marginRight: 10 },
+  filterText: { color: 'white', marginLeft: 5 },
+  chip: { backgroundColor: '#334155', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 20, marginRight: 10 },
+  activeChip: { backgroundColor: '#3b82f6' },
+  chipText: { color: '#94a3b8' },
+  activeChipText: { color: 'white' },
+  tabContainer: { flexDirection: 'row', backgroundColor: '#1e293b', marginHorizontal: 20, borderRadius: 10, marginBottom: 20 },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  activeTab: { backgroundColor: '#334155', borderRadius: 10 },
+  tabText: { color: '#64748b', fontWeight: 'bold' },
+  activeTabText: { color: 'white' },
+  list: { paddingHorizontal: 20 },
+  alertCard: { flexDirection: 'row', borderRadius: 15, marginBottom: 15, overflow: 'hidden' },
+  sideIndicator: { width: 5 },
+  iconContainer: { padding: 15, justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)' },
+  cardContent: { flex: 1, padding: 15 },
+  cardRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  cardTitle: { fontSize: 18, fontWeight: 'bold' },
+  timeText: { fontSize: 12, color: '#64748b' },
+  severityText: { fontWeight: 'bold', marginVertical: 4 },
+  locationRow: { flexDirection: 'row', alignItems: 'center' },
+  locationText: { color: '#64748b', marginLeft: 5, fontSize: 13 },
+  fab: { position: 'absolute', bottom: 20, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#3b82f6', justifyContent: 'center', alignItems: 'center' },
+  fabText: { color: 'white', fontSize: 24, fontWeight: 'bold' }
 });

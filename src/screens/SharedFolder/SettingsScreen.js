@@ -8,11 +8,9 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from 'expo-haptics'; 
 import * as LocalAuthentication from 'expo-local-authentication';
 
-// Context Imports
 import { ThemeContext } from "../../context/ThemeContext";
 import { AuthContext } from "../../context/AuthContext"; 
 
-// Reusable Menu Row Component
 const MenuRow = ({ icon, title, sub, onPress, isDark, iconColor = "#3b82f6" }) => (
   <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
     <View style={styles.rowLeft}>
@@ -36,13 +34,10 @@ export default function SettingsScreen({ navigation }) {
   const isDarkMode = theme === 'dark';
   const isResponder = role === "RESPONDER";
 
-  // Tactical Role Switch Logic
   const handlePoliceModeSwitch = async () => {
-    // 1. Initial Tactical Feedback
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Vibration.vibrate(100);
 
-    // 2. Biometric Security Gate
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
@@ -54,7 +49,6 @@ export default function SettingsScreen({ navigation }) {
       if (!authResult.success) return; 
     }
 
-    // 3. Confirmation Dialog
     Alert.alert(
       "Confirm Mode Switch",
       `Are you sure you want to switch to ${isResponder ? "Citizen" : "Police"} mode?`,
@@ -63,14 +57,13 @@ export default function SettingsScreen({ navigation }) {
         { 
           text: "Confirm Switch", 
           onPress: async () => {
-            setIsSwitching(true); // Trigger tactical overlay
+            setIsSwitching(true);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
             try {
-              // 4. Update the Context (Triggers App.js Stack Switch)
-              await switchRole(); 
+              // Pass the specific role you want to switch to
+              await switchRole(isResponder ? "CITIZEN" : "RESPONDER"); 
 
-              // 5. Tactical delay for "System Uplink" effect
               setTimeout(() => {
                 setIsSwitching(false);
               }, 2000);
@@ -88,7 +81,6 @@ export default function SettingsScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: isDarkMode ? "#020617" : "#f8fafc" }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
       
-      {/* TACTICAL SECURITY OVERLAY */}
       {isSwitching && (
         <View style={styles.overlay}>
           <ActivityIndicator size="large" color="#bef264" />
@@ -102,7 +94,6 @@ export default function SettingsScreen({ navigation }) {
       )}
 
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* HEADER */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={isDarkMode ? "#fff" : "#000"} />
@@ -112,32 +103,18 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
-          {/* 1. PREFERENCES */}
           <Text style={styles.sectionLabel}>System Preferences</Text>
           <View style={[styles.card, { backgroundColor: isDarkMode ? "#0f172a" : "#ffffff" }]}>
-            <MenuRow icon="notifications" title="Alerts" sub="Flood & Risk Notifications" isDark={isDarkMode} iconColor="#f59e0b" onPress={() => navigation.navigate("NotificationSettings")} />
+            <MenuRow icon="notifications" title="Alerts" sub="Flood & Risk Notifications" isDark={isDarkMode} iconColor="#f59e0b" onPress={() => {}} />
             <View style={styles.divider} />
-            <MenuRow icon="shield-checkmark" title="Privacy" sub="Data & Location Permissions" isDark={isDarkMode} iconColor="#10b981" onPress={() => navigation.navigate("PrivacySettings")} />
-            <View style={styles.divider} />
-            <MenuRow icon="person" title="Account" sub="Profile & Academic Details" isDark={isDarkMode} iconColor="#6366f1" onPress={() => navigation.navigate("AccountSettings")} />
+            <MenuRow icon="shield-checkmark" title="Privacy" sub="Data & Location Permissions" isDark={isDarkMode} iconColor="#10b981" onPress={() => {}} />
           </View>
 
-          {/* 2. SUPPORT */}
-          <Text style={styles.sectionLabel}>Safe Nepal Support</Text>
-          <View style={[styles.card, { backgroundColor: isDarkMode ? "#0f172a" : "#ffffff" }]}>
-            <MenuRow icon="help-circle" title="Help Center" sub="FAQ & Documentation" isDark={isDarkMode} iconColor="#8b5cf6" onPress={() => navigation.navigate("Help")} />
-            <View style={styles.divider} />
-            <MenuRow icon="information-circle" title="Version" sub="v2.1.0 Beta" isDark={isDarkMode} iconColor="#64748b" onPress={() => navigation.navigate("About")} />
-          </View>
-
-          {/* 3. LOGOUT */}
           <TouchableOpacity style={styles.logoutBtn} onPress={signOut}>
             <Ionicons name="log-out-outline" size={20} color="#ef4444" />
             <Text style={styles.logoutText}>Sign Out from Device</Text>
           </TouchableOpacity>
 
-          {/* 4. POLICE MODE SWITCH */}
           <Text style={styles.sectionLabel}>Security Protocol</Text>
           <TouchableOpacity 
             style={[styles.switchModeBtn, { backgroundColor: isResponder ? "#334155" : "#bef264" }]} 
@@ -156,9 +133,7 @@ export default function SettingsScreen({ navigation }) {
               </Text>
             </View>
           </TouchableOpacity>
-
           <Text style={styles.footerBrand}>Safe Nepal • Kathmandu</Text>
-
         </ScrollView>
       </SafeAreaView>
     </View>
