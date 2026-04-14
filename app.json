@@ -18,6 +18,11 @@
     },
     "android": {
       "package": "com.esprihya.safenepalapp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE" 
+        }
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -29,7 +34,8 @@
         "WRITE_EXTERNAL_STORAGE",
         "NOTIFICATIONS",
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "USE_FINGERPRINT",
+        "VIBRATE"
       ]
     },
     "plugins": [
@@ -54,6 +60,9 @@
         {
           "android": {
             "usesCleartextTraffic": true
+          },
+          "ios": {
+            "useFrameworks": "static"
           }
         }
       ],

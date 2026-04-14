@@ -11,6 +11,7 @@ import {
   FontAwesome5, 
   MaterialCommunityIcons 
 } from "@expo/vector-icons";
+import * as Location from 'expo-location'; 
 
 // Context Providers
 import { ThemeContext } from "../../context/ThemeContext"; 
@@ -35,14 +36,15 @@ export default function HomeScreen({ navigation, route }) {
   const { userRole } = useContext(AuthContext); 
   
   const [userMode, setUserMode] = useState(route.params?.screenMode || userRole || 'CITIZEN'); 
-
-  const blinkAnim = useRef(new Animated.Value(0.3)).current;
+  const [locationName, setLocationName] = useState("Detecting...");
   const [loading, setLoading] = useState(true);
   const [weather, setWeather] = useState({ 
-    location: "Chandragiri", 
+    location: "Loading...", 
     temp: "--", 
-    condition: "Loading..." 
+    condition: "Fetching local data..." 
   });
+
+  const blinkAnim = useRef(new Animated.Value(0.3)).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -53,27 +55,54 @@ export default function HomeScreen({ navigation, route }) {
   );
 
   useEffect(() => {
-    const fetchWeather = async () => {
+    const getPermissionsAndLocation = async () => {
       try {
+        // 1. Request Permission
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setLocationName("Permission Denied");
+          setWeather(prev => ({ ...prev, condition: "Access location for weather" }));
+          setLoading(false);
+          return;
+        }
+
+        // 2. Get Current Coordinates
+        let location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const { latitude, longitude } = location.coords;
+
+        // 3. Reverse Geocode (Turn Lat/Lon into specific neighborhood/city)
+        let address = await Location.reverseGeocodeAsync({ latitude, longitude });
+        let neighborhood = "Nepal"; 
+        if (address.length > 0) {
+          neighborhood = address[0].name || address[0].street || address[0].district || address[0].city;
+          setLocationName(neighborhood);
+        }
+
+        // 4. Fetch Weather using precise coordinates
         const res = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?q=Chandragiri&appid=3b2556b5414e1a2fb4f739c28ae3bc1b&units=metric`
+          `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=3b2556b5414e1a2fb4f739c28ae3bc1b&units=metric`
         );
         const data = await res.json();
+        
         if (data.main) {
           setWeather({ 
-            location: data.name, 
+            location: neighborhood, 
             temp: Math.round(data.main.temp), 
             condition: data.weather[0].description.toUpperCase() 
           });
         }
       } catch (e) { 
-        console.error(e); 
+        console.error("Home.js: Location/Weather Error", e); 
       } finally { 
         setLoading(false); 
       }
     };
-    fetchWeather();
 
+    getPermissionsAndLocation();
+
+    // Pulse animation for Risk Badge
     Animated.loop(
       Animated.sequence([
         Animated.timing(blinkAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
@@ -142,12 +171,12 @@ export default function HomeScreen({ navigation, route }) {
               onPress={() => navigation.navigate("Analytics")} 
               style={[styles.mainRiskCard, { backgroundColor: colors.card }]}
             >
-                <Text style={[styles.riskLabel, { color: colors.subText }]}>Current National Risk</Text>
+                <Text style={[styles.riskLabel, { color: colors.subText }]}>LOCAL RISK: {locationName.toUpperCase()}</Text>
                 <Animated.View style={[styles.lowBadge, { opacity: blinkAnim }]}>
                    <Text style={styles.lowText}>LOW</Text>
                 </Animated.View>
                 <Text style={[styles.riskDescription, { color: colors.subText }]}>
-                  Status: Secure. Tap to view detailed AI forecast.
+                  Current local status: Secure. Tap to view detailed AI forecast for {locationName}.
                 </Text>
             </TouchableOpacity>
           )}
@@ -169,41 +198,22 @@ export default function HomeScreen({ navigation, route }) {
               </>
             ) : (
               <>
-                {/* Row 1 */}
                 <ActionItem title="SOS" icon="notifications-active" color="#F87171" colors={colors} onPress={() => navigation.navigate("SOSScreen")} />
                 <ActionItem title="Alerts" icon="warning" color="#FBBF24" colors={colors} onPress={() => navigation.navigate("Alerts")} />
                 <ActionItem title="Forecast" icon="auto-graph" iconFamily="material" color="#A78BFA" colors={colors} onPress={() => navigation.navigate("Analytics")} />
-                
-                {/* Row 2 */}
                 <ActionItem title="Relief" icon="home" color="#60A5FA" colors={colors} onPress={() => navigation.navigate("ReliefCenter")} />
                 <ActionItem title="Map" icon="map" color="#2196F3" colors={colors} onPress={() => navigation.navigate("GeneralMap")} />
                 <ActionItem title="History" icon="history" color="#2DD4BF" colors={colors} onPress={() => navigation.navigate("History")} />
-                
-                {/* Row 3 - UPDATED: Merged Safety and added Safe Zones */}
                 <ActionItem title="Contacts" icon="contact-phone" color="#94A3B8" colors={colors} onPress={() => navigation.navigate("EmergencyContacts")} />
-                <ActionItem 
-                    title="Safety & Med" 
-                    icon="shield-check" 
-                    iconFamily="community" 
-                    color="#34D399" 
-                    colors={colors} 
-                    onPress={() => navigation.navigate("SafetyTips")} 
-                />
-                <ActionItem 
-                    title="Safe Zones" 
-                    icon="home-city" 
-                    iconFamily="community" 
-                    color="#2ed573" 
-                    colors={colors} 
-                    onPress={() => navigation.navigate("SafeZones")} 
-                />
+                <ActionItem title="Safety & Med" icon="shield-check" iconFamily="community" color="#34D399" colors={colors} onPress={() => navigation.navigate("SafetyTips")} />
+                <ActionItem title="Safe Zones" icon="home-city" iconFamily="community" color="#2ed573" colors={colors} onPress={() => navigation.navigate("SafeZones")} />
               </>
             )}
           </View>
         </ScrollView>
       </LinearGradient>
 
-      {/* FAB */}
+      {/* FAB - Citizen Only */}
       {userMode !== 'RESPONDER' && (
         <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("NewReport")} activeOpacity={0.8}>
             <LinearGradient colors={["#FF4D4D", "#D32F2F"]} style={styles.fabGradient}>
