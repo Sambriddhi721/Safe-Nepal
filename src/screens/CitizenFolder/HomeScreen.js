@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
+import React, { useEffect, useRef, useState, useContext, useCallback, memo } from "react";
 import { 
   View, Text, StyleSheet, TouchableOpacity, Dimensions, 
-  ScrollView, Animated, StatusBar, ActivityIndicator 
+  ScrollView, Animated, StatusBar, ActivityIndicator, Alert 
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,7 +19,8 @@ import { AuthContext } from "../../context/AuthContext";
 
 const { width } = Dimensions.get("window");
 
-const ActionItem = ({ title, icon, color, onPress, colors, iconFamily = "material" }) => (
+// Memoized for performance boost
+const ActionItem = memo(({ title, icon, color, onPress, colors, iconFamily = "material" }) => (
   <TouchableOpacity style={styles.actionItem} onPress={onPress} activeOpacity={0.7}>
     <View style={[styles.iconCircle, { backgroundColor: colors.card, shadowColor: color }]}>
       {iconFamily === "material" && <MaterialIcons name={icon} size={26} color={color} />}
@@ -29,7 +30,7 @@ const ActionItem = ({ title, icon, color, onPress, colors, iconFamily = "materia
     </View>
     <Text style={[styles.actionText, { color: colors.text }]} numberOfLines={1}>{title}</Text>
   </TouchableOpacity>
-);
+));
 
 export default function HomeScreen({ navigation, route }) {
   const { theme, colors } = useContext(ThemeContext);
@@ -46,6 +47,7 @@ export default function HomeScreen({ navigation, route }) {
 
   const blinkAnim = useRef(new Animated.Value(0.3)).current;
 
+  // Handle mode switches from navigation params
   useFocusEffect(
     useCallback(() => {
       if (route.params?.screenMode) {
@@ -55,38 +57,50 @@ export default function HomeScreen({ navigation, route }) {
   );
 
   useEffect(() => {
+    let isMounted = true;
+
     const getPermissionsAndLocation = async () => {
       try {
-        // 1. Request Permission
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setLocationName("Permission Denied");
-          setWeather(prev => ({ ...prev, condition: "Access location for weather" }));
-          setLoading(false);
+        // 1. Check & Request Permission
+        const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+        let finalStatus = existingStatus;
+        
+        if (existingStatus !== 'granted') {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          finalStatus = status;
+        }
+
+        if (finalStatus !== 'granted') {
+          if (isMounted) {
+            setLocationName("Permission Denied");
+            setWeather(prev => ({ ...prev, condition: "Enable location for weather" }));
+            setLoading(false);
+          }
           return;
         }
 
-        // 2. Get Current Coordinates
-        let location = await Location.getCurrentPositionAsync({
+        // 2. Get Current Position
+        const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
         const { latitude, longitude } = location.coords;
 
-        // 3. Reverse Geocode (Turn Lat/Lon into specific neighborhood/city)
-        let address = await Location.reverseGeocodeAsync({ latitude, longitude });
+        // 3. Reverse Geocode
+        const address = await Location.reverseGeocodeAsync({ latitude, longitude });
         let neighborhood = "Nepal"; 
-        if (address.length > 0) {
-          neighborhood = address[0].name || address[0].street || address[0].district || address[0].city;
+        if (address.length > 0 && isMounted) {
+          neighborhood = address[0].name || address[0].district || address[0].city || "Nepal";
           setLocationName(neighborhood);
         }
 
-        // 4. Fetch Weather using precise coordinates
+        // 4. Fetch Weather (Replace API Key with .env in production)
+        const API_KEY = "3b2556b5414e1a2fb4f739c28ae3bc1b"; 
         const res = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=3b2556b5414e1a2fb4f739c28ae3bc1b&units=metric`
+          `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${API_KEY}&units=metric`
         );
         const data = await res.json();
         
-        if (data.main) {
+        if (isMounted && res.ok && data.main) {
           setWeather({ 
             location: neighborhood, 
             temp: Math.round(data.main.temp), 
@@ -94,36 +108,48 @@ export default function HomeScreen({ navigation, route }) {
           });
         }
       } catch (e) { 
-        console.error("Home.js: Location/Weather Error", e); 
+        console.error("Home.js Error:", e);
       } finally { 
-        setLoading(false); 
+        if (isMounted) setLoading(false); 
       }
     };
 
     getPermissionsAndLocation();
 
     // Pulse animation for Risk Badge
-    Animated.loop(
+    const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(blinkAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        Animated.timing(blinkAnim, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 1200, useNativeDriver: true }),
       ])
-    ).start();
+    );
+    pulse.start();
+
+    return () => {
+      isMounted = false;
+      pulse.stop(); // Cleanup animation on unmount
+    };
   }, [blinkAnim]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient colors={[colors.background, theme === 'dark' ? "#111827" : "#f3f4f6"]} style={styles.container}>
+      <LinearGradient 
+        colors={[colors.background, theme === 'dark' ? "#111827" : "#f3f4f6"]} 
+        style={styles.container}
+      >
         <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} />
         
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false} 
+          contentContainerStyle={{ paddingBottom: 140 }}
+        >
           {/* HEADER */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
                <Ionicons 
                   name={userMode === 'RESPONDER' ? "shield-half" : "shield-checkmark"} 
                   size={26} 
-                  color={userMode === 'RESPONDER' ? "#3b82f6" : colors.text} 
+                  color={userMode === 'RESPONDER' ? "#3b82f6" : colors.primary} 
                />
                <Text style={[styles.navTitle, { color: colors.text }]}>
                   {userMode === 'RESPONDER' ? "Responder" : "Safe Nepal"}
@@ -139,7 +165,9 @@ export default function HomeScreen({ navigation, route }) {
 
           {/* WEATHER SECTION */}
           <View style={[styles.weatherCard, { backgroundColor: colors.card }]}>
-            {loading ? <ActivityIndicator color={colors.primary} size="small" /> : (
+            {loading ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
               <View style={styles.weatherRow}>
                 <View>
                   <View style={styles.locationRow}>
@@ -215,7 +243,11 @@ export default function HomeScreen({ navigation, route }) {
 
       {/* FAB - Citizen Only */}
       {userMode !== 'RESPONDER' && (
-        <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("NewReport")} activeOpacity={0.8}>
+        <TouchableOpacity 
+          style={styles.fab} 
+          onPress={() => navigation.navigate("NewReport")} 
+          activeOpacity={0.8}
+        >
             <LinearGradient colors={["#FF4D4D", "#D32F2F"]} style={styles.fabGradient}>
                 <MaterialIcons name="report-problem" size={32} color="#fff" />
                 <Text style={styles.fabText}>REPORT</Text>
@@ -228,11 +260,27 @@ export default function HomeScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingTop: 60, paddingHorizontal: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  header: { 
+    paddingTop: 60, 
+    paddingHorizontal: 20, 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center", 
+    marginBottom: 20 
+  },
   headerLeft: { flexDirection: 'row', alignItems: 'center' },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
   navTitle: { fontSize: 20, fontWeight: "bold", marginLeft: 10 },
-  weatherCard: { marginHorizontal: 20, borderRadius: 24, padding: 20, marginBottom: 20, elevation: 3 },
+  weatherCard: { 
+    marginHorizontal: 20, 
+    borderRadius: 24, 
+    padding: 20, 
+    marginBottom: 20, 
+    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4
+  },
   weatherRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   locationRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   locationText: { fontSize: 16, fontWeight: '700', marginLeft: 4 },
@@ -240,15 +288,46 @@ const styles = StyleSheet.create({
   conditionText: { fontSize: 13, textTransform: 'capitalize' },
   mainRiskCard: { marginHorizontal: 20, borderRadius: 28, padding: 25, alignItems: "center", elevation: 2 },
   riskLabel: { fontSize: 12, fontWeight: '600', marginBottom: 12, letterSpacing: 1 },
-  lowBadge: { backgroundColor: "rgba(57, 255, 20, 0.1)", paddingHorizontal: 40, paddingVertical: 12, borderRadius: 20, marginBottom: 15, borderWidth: 1.5, borderColor: "#39FF14" },
+  lowBadge: { 
+    backgroundColor: "rgba(57, 255, 20, 0.1)", 
+    paddingHorizontal: 40, 
+    paddingVertical: 12, 
+    borderRadius: 20, 
+    marginBottom: 15, 
+    borderWidth: 1.5, 
+    borderColor: "#39FF14" 
+  },
   lowText: { color: "#39FF14", fontSize: 32, fontWeight: "900" },
   riskDescription: { fontSize: 13, textAlign: "center", opacity: 0.8 },
   sectionTitle: { fontSize: 19, fontWeight: "bold", marginHorizontal: 20, marginTop: 30, marginBottom: 15 },
   grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 10, justifyContent: 'center' },
   actionItem: { width: width / 3 - 10, alignItems: "center", marginBottom: 20 },
-  iconCircle: { width: 66, height: 66, borderRadius: 24, justifyContent: "center", alignItems: "center", marginBottom: 8, elevation: 5, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 5 },
+  iconCircle: { 
+    width: 66, 
+    height: 66, 
+    borderRadius: 24, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    marginBottom: 8, 
+    elevation: 8, 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 5 
+  },
   actionText: { fontSize: 12, fontWeight: "700", textAlign: 'center' },
-  fab: { position: 'absolute', bottom: 30, right: 25, width: 85, height: 85, borderRadius: 42.5, elevation: 15 },
+  fab: { 
+    position: 'absolute', 
+    bottom: 30, 
+    right: 25, 
+    width: 85, 
+    height: 85, 
+    borderRadius: 42.5, 
+    elevation: 15,
+    shadowColor: "#FF4D4D",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8
+  },
   fabGradient: { flex: 1, borderRadius: 42.5, justifyContent: 'center', alignItems: 'center' },
   fabText: { color: "#fff", fontSize: 11, fontWeight: "900", marginTop: 2 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 20 },

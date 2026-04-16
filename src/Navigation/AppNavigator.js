@@ -1,154 +1,182 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { 
   StatusBar, 
+  Platform, 
+  LogBox, 
   ActivityIndicator, 
   View, 
   StyleSheet, 
-  Platform, 
   UIManager 
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-// --- Context Providers ---
-import { AuthContext } from './src/context/AuthContext';
-import { ThemeContext } from './src/context/ThemeContext';
+// --- Context & Services ---
+import { AuthContext } from '../context/AuthContext';
+import { ThemeContext } from '../context/ThemeContext';
+import { NotificationService } from '../screens/SharedFolder/NotificationService';
 
-//Shared Screens 
-import WelcomeScreen from './src/screens/Shared Folder/WelcomeScreen';
-import LoginScreen from './src/screens/Shared Folder/LoginScreen';
-import SignupScreen from './src/screens/Shared Folder/SignupScreen';
-import EmailVerificationScreen from './src/screens/Shared Folder/EmailVerificationScreen';
-import AccountScreen from './src/screens/Shared Folder/AccountScreen'; 
-import AccountSettings from './src/screens/Shared Folder/AccountSettings'; 
-import EditProfileScreen from './src/screens/Shared Folder/EditProfileScreen';
-import BillingScreen from './src/screens/Shared Folder/BillingScreen'; 
-import LinkedAccountsScreen from './src/screens/Shared Folder/LinkedAccountsScreen';
-import PrivacySettings from './src/screens/Shared Folder/PrivacySettings';
-import SecuritySettings from './src/screens/Shared Folder/SecuritySettings';
-import NotificationSettings from './src/screens/Shared Folder/NotificationSettings';
-import HelpScreen from './src/screens/Shared Folder/HelpScreen';
-import AboutScreen from './src/screens/Shared Folder/AboutScreen';
-import MapScreen from './src/screens/Shared Folder/Map';
+// --- SHARED SCREENS ---
+import WelcomeScreen from '../screens/SharedFolder/WelcomeScreen';
+import LoginScreen from '../screens/SharedFolder/LoginScreen';
+import SignupScreen from '../screens/SharedFolder/SignupScreen';
+import EmailVerificationScreen from '../screens/SharedFolder/EmailVerificationScreen';
+import ProfileScreen from '../screens/SharedFolder/ProfileScreen';
+import MapScreen from '../screens/SharedFolder/Map';
+import AboutScreen from '../screens/SharedFolder/AboutScreen';
+import AccountScreen from '../screens/SharedFolder/AccountScreen';
+import AccountSettings from '../screens/SharedFolder/AccountSettings';
+import EditProfileScreen from '../screens/SharedFolder/EditProfileScreen';
+import NotificationSettings from '../screens/SharedFolder/NotificationSettings';
+import PrivacySettings from '../screens/SharedFolder/PrivacySettings';
+import SecuritySettings from '../screens/SharedFolder/SecuritySettings';
+import HelpScreen from '../screens/SharedFolder/HelpScreen';
+import BillingScreen from '../screens/SharedFolder/BillingScreen';
+import LinkedAccountsScreen from '../screens/SharedFolder/LinkedAccountsScreen';
+import SettingsScreen from '../screens/SharedFolder/SettingsScreen';
 
-//Citizen Screens
-import HomeScreen from './src/screens/Citizen Folder/HomeScreen';
-import SOSScreen from './src/screens/Citizen Folder/SOSScreen';
-import SOSListScreen from './src/screens/Citizen Folder/SOSListScreen';
-import SafetyTipsScreen from './src/screens/Citizen Folder/SafetyTipsScreen';
-import AddContactScreen from './src/screens/Citizen Folder/AddContactScreen';
-import EmergencyContactsScreen from './src/screens/Citizen Folder/EmergencyContactsScreen';
-import IncidentReportScreen from './src/screens/Citizen Folder/IncidentReportScreen';
-import PastReportsScreen from './src/screens/Citizen Folder/PastReportsScreen';
-import PredictionAnalyticsScreen from './src/screens/Citizen Folder/PredictionAnalyticsScreen';
-import ReliefCenterScreen from './src/screens/Citizen Folder/ReliefCenterScreen';
-import ReliefCenterDetails from './src/screens/Citizen Folder/ReliefCenterDetails';
-import SafeZonesScreen from './src/screens/Citizen Folder/SafeZonesScreen';
-import ReportDisasterScreen from './src/screens/Citizen Folder/ReportDisasterScreen';
+// --- CITIZEN SCREENS ---
+import HomeScreen from '../screens/CitizenFolder/HomeScreen';
+import CitizenAlertScreen from '../screens/CitizenFolder/Alert';
+import ReportDisasterScreen from '../screens/CitizenFolder/ReportDisasterScreen';
+import IncidentReportScreen from '../screens/CitizenFolder/IncidentReportScreen';
+import PastReportsScreen from '../screens/CitizenFolder/PastReportsScreen';
+import SOSScreen from '../screens/CitizenFolder/SOSScreen';
+import SOSListScreen from '../screens/CitizenFolder/SOSListScreen';
+import ReliefCenterScreen from '../screens/CitizenFolder/ReliefCenterScreen';
+import ReliefCenterDetails from '../screens/CitizenFolder/ReliefCenterDetails';
+import EmergencyContactsScreen from '../screens/CitizenFolder/EmergencyContactsScreen';
+import AddContactScreen from '../screens/CitizenFolder/AddContactScreen';
+import SafetyTipsScreen from '../screens/CitizenFolder/SafetyTipsScreen';
+import PredictionAnalyticsScreen from '../screens/CitizenFolder/PredictionAnalyticsScreen';
+import SafeZonesScreen from '../screens/CitizenFolder/SafeZonesScreen';
 
-//Police Screens 
-import PoliceDashboardScreen from './src/screens/PoliceFolder/PoliceDashboardScreen';
-import PoliceSettingsScreen from './src/screens/PoliceFolder/PoliceSettingsScreen'; 
-import RealTimeMapScreen from './src/screens/PoliceFolder/RealTimeMapScreen';
-import AlertScreen from './src/screens/PoliceFolder/AlertScreen';
-import AlertDetailsScreen from './src/screens/PoliceFolder/AlertDetailsScreen';
-import VolunteerScreen from './src/screens/PoliceFolder/VolunteerScreen';
-import PoliceSOSList from './src/screens/PoliceFolder/SOSList';
+// --- POLICE / RESPONDER SCREENS ---
+import PoliceDashboardScreen from '../screens/PoliceFolder/PoliceDashboardScreen';
+import PoliceAlertScreen from '../screens/PoliceFolder/AlertScreen';
+import AlertDetailsScreen from '../screens/PoliceFolder/AlertDetailsScreen';
+import RealTimeMapScreen from '../screens/PoliceFolder/RealTimeMapScreen';
+import VolunteerScreen from '../screens/PoliceFolder/VolunteerScreen';
+import PoliceSOSList from '../screens/PoliceFolder/SOSList';
+import PoliceSettingsScreen from '../screens/PoliceFolder/PoliceSettingsScreen';
 
+// --- CONFIG ---
+LogBox.ignoreLogs(['Non-serializable values', 'expo-notifications', 'setLayoutAnimationEnabledExperimental']);
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
-export default function App() {
-  const { token, loading, role } = useContext(AuthContext) || {};
+const AppNavigator = () => {
+  const { user, token, role, loading } = useContext(AuthContext) || {};
   const { theme } = useContext(ThemeContext) || { theme: 'dark' };
   const isDarkMode = theme === 'dark';
 
+  const isAuthenticated = !!(token || user);
+  const currentRole = role?.toUpperCase() || user?.role?.toUpperCase() || 'USER';
+  const isResponder = ['RESPONDER', 'POLICE', 'HELPER'].includes(currentRole);
+
+  useEffect(() => {
+    (async () => {
+      try { await NotificationService.init(); } catch (e) { console.warn("Notif init failed"); }
+    })();
+  }, []);
+
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: isDarkMode ? '#020617' : '#f5f5f5' }]}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+      <View style={[styles.center, { backgroundColor: isDarkMode ? '#020617' : '#fff' }]}>
+        <ActivityIndicator size="large" color="#bef264" />
       </View>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-        
-        <Stack.Navigator 
-          key={role} 
-          screenOptions={{ 
-            headerShown: false,
-            cardStyle: { backgroundColor: isDarkMode ? '#020617' : '#f5f5f5' }
-          }}
-        >
-          {token == null ? (
+    <NavigationContainer>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+      
+      <Stack.Navigator
+        key={currentRole}
+        screenOptions={{
+          headerStyle: { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' },
+          headerTintColor: isDarkMode ? '#F1F5F9' : '#0f172a',
+          headerTitleStyle: { fontWeight: '800', fontSize: 17 },
+          headerShadowVisible: false,
+          animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right',
+          contentStyle: { backgroundColor: isDarkMode ? '#020617' : '#f5f5f5' }
+        }}
+      >
+        {!isAuthenticated ? (
+          <Stack.Group screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Signup" component={SignupScreen} />
+            <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+          </Stack.Group>
+        ) : (
+          <>
+            {/* 1. ENTRY POINT */}
+            <Stack.Screen 
+              name="MainDashboard" 
+              component={isResponder ? PoliceDashboardScreen : HomeScreen} 
+              options={{ headerShown: false }} 
+            />
+
+            {/* 2. SHARED MODULE */}
             <Stack.Group>
-              <Stack.Screen name="Welcome" component={WelcomeScreen} />
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Signup" component={SignupScreen} />
-              <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+              <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'App Settings' }} />
+              <Stack.Screen name="AccountMenu" component={AccountScreen} options={{ title: 'Menu' }} />
+              <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
+              <Stack.Screen name="AccountSettings" component={AccountSettings} options={{ title: 'Manage Account' }} />
+              <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ presentation: 'modal', title: 'Update Profile' }} />
+              <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: 'Alerts' }} />
+              <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={{ title: 'Privacy' }} />
+              <Stack.Screen name="SecuritySettings" component={SecuritySettings} options={{ title: 'Security' }} />
+              <Stack.Screen name="BillingScreen" component={BillingScreen} options={{ title: 'Billing' }} />
+              <Stack.Screen name="LinkedAccountsScreen" component={LinkedAccountsScreen} options={{ title: 'Accounts' }} />
+              <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Help' }} />
+              <Stack.Screen name="About" component={AboutScreen} options={{ title: 'Safe Nepal' }} />
+              <Stack.Screen name="GeneralMap" component={MapScreen} options={{ title: 'Safe Map' }} />
             </Stack.Group>
-          ) : (
+
+            {/* 3. CITIZEN MODULE */}
             <Stack.Group>
-              {/* --- 🏠 DYNAMIC ROOT DASHBOARD --- */}
-              <Stack.Screen 
-                name="HomeScreen" 
-                component={
-                  (role?.toUpperCase() === 'RESPONDER' || role?.toUpperCase() === 'POLICE' || role?.toUpperCase() === 'HELPER') 
-                  ? PoliceDashboardScreen 
-                  : HomeScreen
-                } 
-              />
-
-              {/* --- 🔵 CITIZEN FEATURES --- */}
-              <Stack.Screen name="SOS" component={SOSScreen} />
-              <Stack.Screen name="SOSList" component={SOSListScreen} />
-              <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} />
-              <Stack.Screen name="AddContact" component={AddContactScreen} />
-              <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} />
-              <Stack.Screen name="IncidentReport" component={IncidentReportScreen} />
-              <Stack.Screen name="PastReports" component={PastReportsScreen} />
-              <Stack.Screen name="PredictionAnalytics" component={PredictionAnalyticsScreen} />
-              <Stack.Screen name="ReliefCenters" component={ReliefCenterScreen} />
-              <Stack.Screen name="ReliefCenterDetails" component={ReliefCenterDetails} />
-              <Stack.Screen name="SafeZones" component={SafeZonesScreen} />
-              <Stack.Screen name="ReportDisaster" component={ReportDisasterScreen} />
-
-              {/* --- 🟡 SHARED / SETTINGS --- */}
-              <Stack.Screen name="Profile" component={AccountScreen} />
-              <Stack.Screen name="AccountSettings" component={AccountSettings} />
-              <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-              <Stack.Screen name="BillingScreen" component={BillingScreen} />
-              <Stack.Screen name="LinkedAccountsScreen" component={LinkedAccountsScreen} />
-              <Stack.Screen name="PrivacySettings" component={PrivacySettings} />
-              <Stack.Screen name="SecuritySettings" component={SecuritySettings} />
-              <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
-              <Stack.Screen name="Help" component={HelpScreen} />
-              <Stack.Screen name="About" component={AboutScreen} />
-              <Stack.Screen name="GeneralMap" component={MapScreen} />
-
-              {/* --- 🔴 POLICE / RESPONDER FEATURES --- */}
-              <Stack.Screen name="PoliceDashboard" component={PoliceDashboardScreen} />
-              <Stack.Screen name="PoliceSettings" component={PoliceSettingsScreen} />
-              <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} />
-              <Stack.Screen name="AlertScreen" component={AlertScreen} />
-              <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} />
-              <Stack.Screen name="Volunteer" component={VolunteerScreen} />
-              <Stack.Screen name="PoliceSOSList" component={PoliceSOSList} />
+              <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Alerts" component={CitizenAlertScreen} options={{ title: 'Safety Alerts' }} /> 
+              <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My History' }} />
+              <Stack.Screen name="NewReport" component={ReportDisasterScreen} options={{ title: 'Report Incident' }} />
+              <Stack.Screen name="SOSScreen" component={SOSScreen} options={{ title: 'EMERGENCY SOS', headerStyle: { backgroundColor: '#ef4444' }, headerTintColor: '#fff' }} />
+              
+              <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} options={{ title: 'Alert Info' }} />
+              <Stack.Screen name="Analytics" component={PredictionAnalyticsScreen} options={{ title: 'Forecasts' }} />
+              <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} options={{ title: 'Safety Procedures' }} />
+              <Stack.Screen name="SafeZones" component={SafeZonesScreen} options={{ title: 'Evacuation Zones' }} />
+              <Stack.Screen name="ReliefCenter" component={ReliefCenterScreen} options={{ title: 'Relief Help' }} />
+              <Stack.Screen name="ReliefCenterDetails" component={ReliefCenterDetails} options={{ title: 'Center Info' }} />
+              <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} options={{ title: 'Contacts' }} />
+              <Stack.Screen name="AddContact" component={AddContactScreen} options={{ title: 'Add Contact' }} />
+              <Stack.Screen name="IncidentReport" component={IncidentReportScreen} options={{ title: 'Incident Detail' }} />
+              <Stack.Screen name="SOSList" component={SOSListScreen} options={{ title: 'My SOS Status' }} />
             </Stack.Group>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+
+            {/* 4. RESPONDER MODULE */}
+            <Stack.Group>
+              <Stack.Screen name="ResponderDashboard" component={PoliceDashboardScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="PoliceAlerts" component={PoliceAlertScreen} options={{ title: 'Responder Feed' }} />
+              <Stack.Screen name="PoliceSOSList" component={PoliceSOSList} options={{ title: 'SOS Signals' }} />
+              <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} options={{ title: 'Dispatch Map' }} />
+              <Stack.Screen name="Volunteer" component={VolunteerScreen} options={{ title: 'Volunteers' }} />
+              <Stack.Screen name="PoliceSettings" component={PoliceSettingsScreen} options={{ title: 'Responder Settings' }} />
+            </Stack.Group>
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
-}
+};
 
-const styles = StyleSheet.create({ 
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' } 
+const styles = StyleSheet.create({
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });
+
+export default AppNavigator;

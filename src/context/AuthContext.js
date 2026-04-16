@@ -7,25 +7,27 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // --- BYPASS MODE: INITIAL STATE ---
-  // We hardcode the user object here so 'user' is never null.
+  // Initial state with bypass safety
   const [user, setUser] = useState({
     uid: "bypass-123",
     full_name: "Sambriddhi Dawadi",
     email: "sambriddhidawadi6@gmail.com",
-    role: "USER" // Set to "RESPONDER" here if you want to start in Police Mode
+    role: "USER" 
   });
   
   const [token, setToken] = useState("bypass-token");
-  const [loading, setLoading] = useState(false); // Set to false to skip the loading spinner
+  const [loading, setLoading] = useState(true); // Start true to check storage first
 
-  // --- 1. INITIAL LOAD (Optional during bypass) ---
+  // 1. Load persisted data on mount
   useEffect(() => {
     const loadPersistedUser = async () => {
       try {
         const savedUser = await AsyncStorage.getItem('user_data');
         if (savedUser) {
-          setUser(JSON.parse(savedUser));
+          const parsed = JSON.parse(savedUser);
+          setUser(parsed);
+          // Set token to bypass-token if real one isn't there yet so app doesn't kick user to Login
+          setToken("bypass-token"); 
         }
       } catch (e) {
         console.error("Failed to load persisted user", e);
@@ -36,7 +38,7 @@ export function AuthProvider({ children }) {
     loadPersistedUser();
   }, []);
 
-  // --- 2. FIREBASE SYNC ---
+  // 2. Firebase Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -51,7 +53,7 @@ export function AuthProvider({ children }) {
             userData = { 
               uid: firebaseUser.uid, 
               email: firebaseUser.email, 
-              full_name: firebaseUser.displayName || "Sambriddhi Dawadi",
+              full_name: firebaseUser.displayName || "User",
               role: "USER" 
             };
             await setDoc(userDocRef, userData);
@@ -70,29 +72,31 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  /**
-   * ROLE SWITCHING
-   * Still works in Bypass mode!
-   */
+  // 3. Optimized Switch Role
   const switchRole = useCallback(async (targetRole = null) => {
     if (!user) return false;
 
     try {
       let newRole;
       if (targetRole) {
-        newRole = targetRole === 'CITIZEN' ? 'USER' : targetRole;
+        // Normalize "USER" to "CITIZEN" if that's what your UI expects, 
+        // but let's keep it consistent with the Navigator "RESPONDER" logic.
+        newRole = targetRole;
       } else {
         newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
       }
 
-      // Sync with Firebase only if there is an actual active Firebase session
+      // 1. Sync with Firebase (if online)
       if (auth.currentUser) {
         const userRef = doc(db, "users", auth.currentUser.uid);
         await setDoc(userRef, { role: newRole }, { merge: true });
       }
 
+      // 2. Update Local State (This triggers the Navigator swap)
       const updatedUser = { ...user, role: newRole };
       setUser(updatedUser);
+      
+      // 3. Persist for next app launch
       await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
       
       return true; 
@@ -107,8 +111,7 @@ export function AuthProvider({ children }) {
     token,
     loading,
     switchRole,
-    role: user?.role || "USER",
-    isResponder: user?.role === "RESPONDER",
+    role: user?.role || "USER", // This is what AppNavigator looks at
   }), [user, token, loading, switchRole]);
 
   return (

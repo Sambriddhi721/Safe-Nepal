@@ -18,9 +18,13 @@
     },
     "android": {
       "package": "com.esprihya.safenepalapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#020617"
+      },
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE" 
+          "apiKey": ""
         }
       },
       "permissions": [
@@ -40,6 +44,12 @@
     },
     "plugins": [
       [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": ""
+        }
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysPermission": "Allow Safe Nepal to monitor high-risk zones even when the app is closed.",
@@ -54,18 +64,19 @@
           "sounds": []
         }
       ],
-      "react-native-maps",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          },
-          "ios": {
-            "useFrameworks": "static"
-          }
-        }
-      ],
+     [
+  "expo-build-properties",
+  {
+    "android": {
+      "newArchEnabled": false,
+      "usesCleartextTraffic": true
+    },
+    "ios": {
+      "newArchEnabled": false,
+      "useFrameworks": "static"
+    }
+  }
+],
       "expo-local-authentication"
     ],
     "extra": {

@@ -3,7 +3,7 @@ import {
   StyleSheet, View, Text, Platform, ActivityIndicator, 
   TouchableOpacity, SafeAreaView, StatusBar, Animated, Easing 
 } from 'react-native';
-import MapView, { Marker, UrlTile, Callout, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, UrlTile, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
@@ -176,38 +176,24 @@ export default function RealTimeMapScreen() {
       </SafeAreaView>
 
       <MapView
-        ref={mapRef}
-        style={styles.map}
-        provider={PROVIDER_DEFAULT}
-        mapType={Platform.OS === 'android' ? "none" : "standard"}
-        initialRegion={userLocation || { latitude: 27.7172, longitude: 85.3240, latitudeDelta: 0.1, longitudeDelta: 0.1 }}
-      >
-        <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-          shouldReplaceMapContent={true}
-        />
-
-        {/* User Positioning with Tactical Pulse */}
-        {userLocation && (
-          <Marker coordinate={userLocation} anchor={{ x: 0.5, y: 0.5 }} zIndex={20}>
-            <View style={styles.userMarkerWrapper}>
-              <Animated.View 
-                style={[
-                  styles.userMarkerPulse, 
-                  { 
-                    transform: [{ scale: pulseAnim }],
-                    opacity: pulseAnim.interpolate({ inputRange: [1, 2.2], outputRange: [0.5, 0] })
-                  } 
-                ]} 
-              />
-              <View style={styles.userMarkerCore} />
-            </View>
-          </Marker>
-        )}
-
-        {renderedMarkers}
-      </MapView>
+  ref={mapRef}
+  style={styles.map}
+  provider={null}
+  mapType="none"
+  initialRegion={{
+    latitude: 27.7172,
+    longitude: 85.3240,
+    latitudeDelta: 0.1,
+    longitudeDelta: 0.1
+  }}
+>
+  <UrlTile
+    urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    maximumZ={19}
+    shouldReplaceMapContent={true}
+    tileSize={256}
+  />
+  </MapView>
 
       {/* Floating Control Hub */}
       <View style={styles.sideControls}>
