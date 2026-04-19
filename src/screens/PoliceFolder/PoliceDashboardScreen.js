@@ -6,8 +6,8 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import * as Location from 'expo-location';
-import { LinearGradient } from 'expo-linear-gradient'; // Ensure expo-linear-gradient is installed
+import { LinearGradient } from 'expo-linear-gradient';
+import { io } from "socket.io-client"; // 1. Import Socket.io
 
 import { AuthContext } from "../../context/AuthContext"; 
 import { ThemeContext } from '../../context/ThemeContext';
@@ -16,18 +16,38 @@ const { width } = Dimensions.get('window');
 const SERVER_URL = "http://192.168.111.70:5000"; 
 
 export default function PoliceDashboardScreen({ navigation }) {
-  const { role, switchRole } = useContext(AuthContext) || {};
+  const { switchRole } = useContext(AuthContext) || {};
   const { theme } = useContext(ThemeContext) || { theme: 'dark' };
   const isDarkMode = theme === 'dark';
   
-  const [activeTab, setActiveTab] = useState('FEED'); 
   const [isOnDuty, setIsOnDuty] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sosData, setSosData] = useState([]);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
-  // Tactical Data Fetching
+  // --- REAL-TIME LOGIC START ---
+  useEffect(() => {
+    // 2. Initialize Socket Connection
+    const socket = io(SERVER_URL);
+
+    socket.on("connect", () => console.log("Connected to Emergency Stream"));
+
+    // 3. Listen for new reports (Ensure your backend emits "newReport")
+    socket.on("newReport", (newIncident) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setSosData((prevData) => [newIncident, ...prevData]);
+      
+      // Optional: Show a subtle alert if the officer is on duty
+      if (isOnDuty) {
+        // You could add a Toast or Local Notification here
+      }
+    });
+
+    return () => socket.disconnect();
+  }, [isOnDuty]);
+  // --- REAL-TIME LOGIC END ---
+
   const fetchTacticalData = async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
@@ -67,7 +87,6 @@ export default function PoliceDashboardScreen({ navigation }) {
     navigation.navigate('RealTimeMap', { emergencyItem: item, mode: 'POLICE' });
   };
 
-  // Sub-component for Quick Actions (Citizen style)
   const QuickAction = ({ icon, label, color, onPress }) => (
     <TouchableOpacity style={styles.actionItem} onPress={onPress}>
       <View style={[styles.actionCircle, { backgroundColor: isDarkMode ? '#1e293b' : '#f1f5f9' }]}>
@@ -85,7 +104,6 @@ export default function PoliceDashboardScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />}
       >
-        {/* HEADER */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Service & Protect</Text>
@@ -101,7 +119,6 @@ export default function PoliceDashboardScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* STATUS CARD (Hero Section) */}
         <LinearGradient
           colors={isOnDuty ? ['#3b82f6', '#1d4ed8'] : ['#475569', '#1e293b']}
           style={styles.statusHero}
@@ -135,7 +152,6 @@ export default function PoliceDashboardScreen({ navigation }) {
           </View>
         </LinearGradient>
 
-        {/* QUICK OPS (Citizen-like Horizontal Actions) */}
         <View style={styles.actionRow}>
           <QuickAction icon="shield-search" label="Patrol" color="#3b82f6" onPress={() => {}} />
           <QuickAction icon="bullhorn-outline" label="Broadcast" color="#f59e0b" onPress={() => navigation.navigate("AlertScreen")} />
@@ -143,7 +159,6 @@ export default function PoliceDashboardScreen({ navigation }) {
           <QuickAction icon="cog-outline" label="Settings" color="#64748b" onPress={() => navigation.navigate("PoliceSettings")} />
         </View>
 
-        {/* FEED SECTION */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1e293b' }]}>Incident Feed</Text>
           <TouchableOpacity onPress={() => fetchTacticalData()}>
@@ -163,7 +178,7 @@ export default function PoliceDashboardScreen({ navigation }) {
 
           {sosData.map((item, index) => (
             <TouchableOpacity 
-              key={index} 
+              key={item._id || index} // Use unique ID from DB if possible
               style={[styles.incidentCard, { backgroundColor: isDarkMode ? '#1e293b' : '#fff' }]}
               onPress={() => handleDispatch(item)}
             >
