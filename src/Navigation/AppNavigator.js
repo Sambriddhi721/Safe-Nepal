@@ -1,12 +1,12 @@
 import React, { useContext, useEffect } from 'react';
-import { 
-  StatusBar, 
-  Platform, 
-  LogBox, 
-  ActivityIndicator, 
-  View, 
-  StyleSheet, 
-  UIManager 
+import {
+  StatusBar,
+  Platform,
+  LogBox,
+  ActivityIndicator,
+  View,
+  StyleSheet,
+  UIManager
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -52,34 +52,50 @@ import PredictionAnalyticsScreen from '../screens/CitizenFolder/PredictionAnalyt
 import SafeZonesScreen from '../screens/CitizenFolder/SafeZonesScreen';
 
 // --- POLICE / RESPONDER SCREENS ---
-import PoliceDashboardScreen from '../screens/PoliceFolder/PoliceDashboardScreen';
+import PoliceDashboardScreen from '../screens/PoliceFolder/ResponderDashboardScreen';
 import PoliceAlertScreen from '../screens/PoliceFolder/AlertScreen';
 import AlertDetailsScreen from '../screens/PoliceFolder/AlertDetailsScreen';
 import RealTimeMapScreen from '../screens/PoliceFolder/RealTimeMapScreen';
 import VolunteerScreen from '../screens/PoliceFolder/VolunteerScreen';
 import PoliceSOSList from '../screens/PoliceFolder/SOSList';
-import PoliceSettingsScreen from '../screens/PoliceFolder/PoliceSettingsScreen';
+import ResponderSettingsScreen from '../screens/PoliceFolder/ResponderSettingsScreen';
 
-// --- CONFIG ---
-LogBox.ignoreLogs(['Non-serializable values', 'expo-notifications', 'setLayoutAnimationEnabledExperimental']);
+// ─── config ───────────────────────────────────────────────────────────────────
+
+LogBox.ignoreLogs([
+  'Non-serializable values',
+  'expo-notifications',
+  'setLayoutAnimationEnabledExperimental',
+]);
+
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 const Stack = createNativeStackNavigator();
 
+const RESPONDER_ROLES = ['RESPONDER', 'POLICE', 'OFFICER'];
+
 const AppNavigator = () => {
-  const { user, token, role, loading } = useContext(AuthContext) || {};
+  const { user, token, loading } = useContext(AuthContext) || {};
   const { theme } = useContext(ThemeContext) || { theme: 'dark' };
+
   const isDarkMode = theme === 'dark';
 
-  const isAuthenticated = !!(token || user);
-  const currentRole = role?.toUpperCase() || user?.role?.toUpperCase() || 'USER';
-  const isResponder = ['RESPONDER', 'POLICE', 'HELPER'].includes(currentRole);
+  const isAuthenticated = !!(token && user);
+  const currentRole     = (user?.role || 'CITIZEN').toUpperCase();
+  const isResponder     = RESPONDER_ROLES.includes(currentRole);
+
+  // TODO: REMOVE DEV BYPASS — change back to: user?.email_verified === true
+  const isEmailVerified = true;
 
   useEffect(() => {
     (async () => {
-      try { await NotificationService.init(); } catch (e) { console.warn("Notif init failed"); }
+      try {
+        await NotificationService.init();
+      } catch (e) {
+        console.warn('[AppNavigator] Notification init failed:', e);
+      }
     })();
   }, []);
 
@@ -93,81 +109,97 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
-      
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        translucent
+        backgroundColor="transparent"
+      />
+
       <Stack.Navigator
-        key={currentRole}
+        key={isAuthenticated ? `${currentRole}-${isEmailVerified}` : 'guest'}
         screenOptions={{
           headerStyle: { backgroundColor: isDarkMode ? '#0f172a' : '#ffffff' },
           headerTintColor: isDarkMode ? '#F1F5F9' : '#0f172a',
           headerTitleStyle: { fontWeight: '800', fontSize: 17 },
           headerShadowVisible: false,
-          animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right',
-          contentStyle: { backgroundColor: isDarkMode ? '#020617' : '#f5f5f5' }
+          animation: Platform.OS === 'android' ? 'slide_from_right' : 'default',
+          contentStyle: { backgroundColor: isDarkMode ? '#020617' : '#f5f5f5' },
         }}
       >
+
+        {/* ── 1. NOT LOGGED IN → Auth stack ── */}
         {!isAuthenticated ? (
           <Stack.Group screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Welcome" component={WelcomeScreen} />
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Signup" component={SignupScreen} />
+            <Stack.Screen name="Welcome"           component={WelcomeScreen} />
+            <Stack.Screen name="Login"             component={LoginScreen} />
+            <Stack.Screen name="Signup"            component={SignupScreen} />
             <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
           </Stack.Group>
+
+        ) : !isEmailVerified ? (
+          /* ── 2. LOGGED IN but email NOT verified ── */
+          <Stack.Group screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+          </Stack.Group>
+
         ) : (
+          /* ── 3. LOGGED IN + VERIFIED → Role-based app ── */
           <>
-            {/* 1. ENTRY POINT */}
-            <Stack.Screen 
-              name="MainDashboard" 
-              component={isResponder ? PoliceDashboardScreen : HomeScreen} 
-              options={{ headerShown: false }} 
+            <Stack.Screen
+              name="MainDashboard"
+              component={isResponder ? PoliceDashboardScreen : HomeScreen}
+              options={{ headerShown: false }}
             />
 
-            {/* 2. SHARED MODULE */}
+            {/* ── SHARED MODULE ── */}
             <Stack.Group>
-              <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'App Settings' }} />
-              <Stack.Screen name="AccountMenu" component={AccountScreen} options={{ title: 'Menu' }} />
-              <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
-              <Stack.Screen name="AccountSettings" component={AccountSettings} options={{ title: 'Manage Account' }} />
-              <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ presentation: 'modal', title: 'Update Profile' }} />
+              <Stack.Screen name="Settings"             component={SettingsScreen}      options={{ title: 'App Settings' }} />
+              <Stack.Screen name="AccountMenu"          component={AccountScreen}        options={{ title: 'Menu' }} />
+              <Stack.Screen name="Profile"              component={ProfileScreen}        options={{ title: 'My Profile' }} />
+              <Stack.Screen name="AccountSettings"      component={AccountSettings}      options={{ title: 'Manage Account' }} />
+              <Stack.Screen name="EditProfile"          component={EditProfileScreen}    options={{ presentation: 'modal', title: 'Update Profile' }} />
               <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: 'Alerts' }} />
-              <Stack.Screen name="PrivacySettings" component={PrivacySettings} options={{ title: 'Privacy' }} />
-              <Stack.Screen name="SecuritySettings" component={SecuritySettings} options={{ title: 'Security' }} />
-              <Stack.Screen name="BillingScreen" component={BillingScreen} options={{ title: 'Billing' }} />
-              <Stack.Screen name="LinkedAccountsScreen" component={LinkedAccountsScreen} options={{ title: 'Accounts' }} />
-              <Stack.Screen name="Help" component={HelpScreen} options={{ title: 'Help' }} />
-              <Stack.Screen name="About" component={AboutScreen} options={{ title: 'Safe Nepal' }} />
-              <Stack.Screen name="GeneralMap" component={MapScreen} options={{ title: 'Safe Map' }} />
+              <Stack.Screen name="PrivacySettings"      component={PrivacySettings}      options={{ title: 'Privacy' }} />
+              <Stack.Screen name="SecuritySettings"     component={SecuritySettings}     options={{ title: 'Security' }} />
+              <Stack.Screen name="Help"                 component={HelpScreen}           options={{ title: 'Help & Support' }} />
+              <Stack.Screen name="About"                component={AboutScreen}          options={{ title: 'Safe Nepal' }} />
+              <Stack.Screen name="GeneralMap"           component={MapScreen}            options={{ title: 'Safe Map' }} />
             </Stack.Group>
 
-            {/* 3. CITIZEN MODULE */}
-            <Stack.Group>
-              <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="Alerts" component={CitizenAlertScreen} options={{ title: 'Safety Alerts' }} /> 
-              <Stack.Screen name="History" component={PastReportsScreen} options={{ title: 'My History' }} />
-              <Stack.Screen name="NewReport" component={ReportDisasterScreen} options={{ title: 'Report Incident' }} />
-              <Stack.Screen name="SOSScreen" component={SOSScreen} options={{ title: 'EMERGENCY SOS', headerStyle: { backgroundColor: '#ef4444' }, headerTintColor: '#fff' }} />
-              
-              <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} options={{ title: 'Alert Info' }} />
-              <Stack.Screen name="Analytics" component={PredictionAnalyticsScreen} options={{ title: 'Forecasts' }} />
-              <Stack.Screen name="SafetyTips" component={SafetyTipsScreen} options={{ title: 'Safety Procedures' }} />
-              <Stack.Screen name="SafeZones" component={SafeZonesScreen} options={{ title: 'Evacuation Zones' }} />
-              <Stack.Screen name="ReliefCenter" component={ReliefCenterScreen} options={{ title: 'Relief Help' }} />
-              <Stack.Screen name="ReliefCenterDetails" component={ReliefCenterDetails} options={{ title: 'Center Info' }} />
-              <Stack.Screen name="EmergencyContacts" component={EmergencyContactsScreen} options={{ title: 'Contacts' }} />
-              <Stack.Screen name="AddContact" component={AddContactScreen} options={{ title: 'Add Contact' }} />
-              <Stack.Screen name="IncidentReport" component={IncidentReportScreen} options={{ title: 'Incident Detail' }} />
-              <Stack.Screen name="SOSList" component={SOSListScreen} options={{ title: 'My SOS Status' }} />
-            </Stack.Group>
+            {/* ── CITIZEN EXCLUSIVE MODULE ── */}
+            {!isResponder && (
+              <Stack.Group>
+                <Stack.Screen name="Alerts"              component={CitizenAlertScreen}         options={{ title: 'Safety Alerts' }} />
+                <Stack.Screen name="History"             component={PastReportsScreen}          options={{ title: 'My History' }} />
+                <Stack.Screen name="NewReport"           component={ReportDisasterScreen}       options={{ title: 'Report Incident' }} />
+                <Stack.Screen name="SOSScreen"           component={SOSScreen}                  options={{
+                  title: 'EMERGENCY SOS',
+                  headerStyle: { backgroundColor: '#ef4444' },
+                  headerTintColor: '#fff',
+                }} />
+                <Stack.Screen name="Analytics"           component={PredictionAnalyticsScreen}  options={{ title: 'Forecasts' }} />
+                <Stack.Screen name="SafetyTips"          component={SafetyTipsScreen}           options={{ title: 'Safety Procedures' }} />
+                <Stack.Screen name="SafeZones"           component={SafeZonesScreen}            options={{ title: 'Evacuation Zones' }} />
+                <Stack.Screen name="ReliefCenter"        component={ReliefCenterScreen}         options={{ title: 'Relief Help' }} />
+                <Stack.Screen name="ReliefCenterDetails" component={ReliefCenterDetails}        options={{ title: 'Center Info' }} />
+                <Stack.Screen name="EmergencyContacts"   component={EmergencyContactsScreen}    options={{ title: 'Contacts' }} />
+                <Stack.Screen name="AddContact"          component={AddContactScreen}           options={{ title: 'Add Contact' }} />
+                <Stack.Screen name="IncidentReport"      component={IncidentReportScreen}       options={{ title: 'Incident Detail' }} />
+                <Stack.Screen name="SOSList"             component={SOSListScreen}              options={{ title: 'My SOS Status' }} />
+              </Stack.Group>
+            )}
 
-            {/* 4. RESPONDER MODULE */}
-            <Stack.Group>
-              <Stack.Screen name="ResponderDashboard" component={PoliceDashboardScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="PoliceAlerts" component={PoliceAlertScreen} options={{ title: 'Responder Feed' }} />
-              <Stack.Screen name="PoliceSOSList" component={PoliceSOSList} options={{ title: 'SOS Signals' }} />
-              <Stack.Screen name="RealTimeMap" component={RealTimeMapScreen} options={{ title: 'Dispatch Map' }} />
-              <Stack.Screen name="Volunteer" component={VolunteerScreen} options={{ title: 'Volunteers' }} />
-              <Stack.Screen name="PoliceSettings" component={PoliceSettingsScreen} options={{ title: 'Responder Settings' }} />
-            </Stack.Group>
+            {/* ── POLICE / RESPONDER EXCLUSIVE MODULE ── */}
+            {isResponder && (
+              <Stack.Group>
+                <Stack.Screen name="PoliceAlerts"   component={PoliceAlertScreen}       options={{ title: 'Responder Feed' }} />
+                <Stack.Screen name="PoliceSOSList"  component={PoliceSOSList}           options={{ title: 'SOS Signals' }} />
+                <Stack.Screen name="RealTimeMap"    component={RealTimeMapScreen}       options={{ title: 'Dispatch Map' }} />
+                <Stack.Screen name="Volunteer"      component={VolunteerScreen}         options={{ title: 'Volunteers' }} />
+                <Stack.Screen name="PoliceSettings" component={ResponderSettingsScreen} options={{ title: 'Responder Settings' }} />
+                <Stack.Screen name="AlertDetails"   component={AlertDetailsScreen}      options={{ title: 'Alert Info' }} />
+              </Stack.Group>
+            )}
           </>
         )}
       </Stack.Navigator>
@@ -176,7 +208,7 @@ const AppNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' }
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });
 
 export default AppNavigator;
