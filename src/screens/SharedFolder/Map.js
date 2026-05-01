@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import {
   StyleSheet, View, Text, ActivityIndicator,
-  TouchableOpacity, SafeAreaView, StatusBar, Animated, Easing
+  TouchableOpacity, SafeAreaView, StatusBar,
 } from 'react-native';
-import MapView, { Marker, UrlTile, Callout, PROVIDER_DEFAULT } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,46 +11,120 @@ import { Ionicons } from '@expo/vector-icons';
 import { API_BASE } from '../../config';
 import { ThemeContext } from '../../context/ThemeContext';
 
-export default function RealTimeMapScreen() {
-  const { theme } = useContext(ThemeContext);
-  const mapRef = useRef(null);
+// ── Default location (Kathmandu) until GPS locks ──────────────────────────────
+const DEFAULT_LAT = 27.7172;
+const DEFAULT_LNG = 85.3240;
 
-  // ── Pulse animation for user marker ─────────────────────────────────────
-  const pulseAnim  = useRef(new Animated.Value(1)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.6)).current;
+// ── Build Leaflet HTML with OSM tiles ────────────────────────────────────────
+const buildMapHTML = (lat, lng, sosMarkers) => {
+  const markersJS = sosMarkers
+    .map((item) => {
+      const mlat = parseFloat(item.lat);
+      const mlng = parseFloat(item.lng);
+      if (isNaN(mlat) || isNaN(mlng)) return '';
+      const title   = (item.type?.toUpperCase() || 'CRITICAL ALERT').replace(/'/g, "\\'");
+      const message = (item.message || 'Emergency help requested.').replace(/'/g, "\\'");
+      return `
+        L.marker([${mlat}, ${mlng}], { icon: sosIcon })
+          .addTo(map)
+          .bindPopup('<b style="color:#ef4444">${title}</b><br/>${message}');
+      `;
+    })
+    .join('\n');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map', { zoomControl: true }).setView([${lat}, ${lng}], 14);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // ── User location marker ──────────────────────────────────────
+    var userIcon = L.divIcon({
+      className: '',
+      html: \`
+        <div style="
+          width:20px; height:20px; border-radius:50%;
+          background:#3b82f6; border:3px solid white;
+          box-shadow:0 0 0 4px rgba(59,130,246,0.4);
+        "></div>
+      \`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10],
+    });
+
+    var userMarker = L.marker([${lat}, ${lng}], { icon: userIcon }).addTo(map);
+
+    // ── SOS Icon ──────────────────────────────────────────────────
+    var sosIcon = L.divIcon({
+      className: '',
+      html: \`
+        <div style="
+          width:32px; height:32px; border-radius:50%;
+          background:#ef4444; border:3px solid white;
+          display:flex; align-items:center; justify-content:center;
+          box-shadow:0 0 8px rgba(239,68,68,0.7);
+          color:white; font-weight:bold; font-size:18px;
+        ">!</div>
+      \`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+
+    // ── SOS Markers ───────────────────────────────────────────────
+    ${markersJS}
+
+    // ── Listen for messages from React Native (Android + iOS) ─────
+    function handleMessage(e) {
+      try {
+        var data = JSON.parse(e.data);
+        if (data.type === 'UPDATE_LOCATION') {
+          userMarker.setLatLng([data.lat, data.lng]);
+        }
+        if (data.type === 'RECENTER') {
+          map.setView([data.lat, data.lng], 15, { animate: true });
+        }
+      } catch(err) {}
+    }
+
+    document.addEventListener('message', handleMessage);
+    window.addEventListener('message', handleMessage);
+  </script>
+</body>
+</html>
+  `;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function RealTimeMapScreen() {
+  const { theme }  = useContext(ThemeContext);
+  const webViewRef = useRef(null);
 
   const [status,       setStatus]       = useState('Initializing Systems...');
   const [userLocation, setUserLocation] = useState(null);
   const [sosData,      setSosData]      = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [isOffline,    setIsOffline]    = useState(false);
+  const [mapReady,     setMapReady]     = useState(false);
+  const [webViewError, setWebViewError] = useState(false);
 
   const isDarkMode = theme === 'dark';
-
-  // ── Pulse animation ──────────────────────────────────────────────────────
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(pulseAnim, {
-            toValue: 2.4,
-            duration: 1800,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseOpacity, {
-            toValue: 0,
-            duration: 1800,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(pulseAnim,    { toValue: 1,   duration: 0, useNativeDriver: true }),
-          Animated.timing(pulseOpacity, { toValue: 0.6, duration: 0, useNativeDriver: true }),
-        ]),
-      ])
-    ).start();
-  }, []);
 
   // ── Fetch SOS data ───────────────────────────────────────────────────────
   const fetchEmergencyData = async () => {
@@ -82,37 +156,37 @@ export default function RealTimeMapScreen() {
           return;
         }
 
-        // Initial position
         const loc = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
 
-        const coords = {
-          latitude:       loc.coords.latitude,
-          longitude:      loc.coords.longitude,
-          latitudeDelta:  0.05,
-          longitudeDelta: 0.05,
-        };
-        setUserLocation(coords);
-
-        // Fly map to user location
-        mapRef.current?.animateToRegion(coords, 800);
+        setUserLocation({
+          latitude:  loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        });
 
         await fetchEmergencyData();
 
-        // Watch position
         locationSubscription = await Location.watchPositionAsync(
           { accuracy: Location.Accuracy.High, distanceInterval: 5 },
           (newLoc) => {
-            setUserLocation((prev) => ({
-              ...prev,
+            const newCoords = {
               latitude:  newLoc.coords.latitude,
               longitude: newLoc.coords.longitude,
-            }));
+            };
+            setUserLocation(newCoords);
+
+            // Push live location into WebView without rebuilding HTML
+            if (mapReady) {
+              webViewRef.current?.postMessage(JSON.stringify({
+                type: 'UPDATE_LOCATION',
+                lat:  newCoords.latitude,
+                lng:  newCoords.longitude,
+              }));
+            }
           }
         );
 
-        // Refresh every 30 s
         dataInterval = setInterval(fetchEmergencyData, 30000);
 
       } catch (err) {
@@ -131,47 +205,38 @@ export default function RealTimeMapScreen() {
     };
   }, []);
 
-  // ── Recenter on user ─────────────────────────────────────────────────────
+  // ── Recenter ─────────────────────────────────────────────────────────────
   const recenter = () => {
-    if (!userLocation) return;
-    mapRef.current?.animateToRegion(
-      { ...userLocation, latitudeDelta: 0.015, longitudeDelta: 0.015 },
-      800
-    );
+    if (!userLocation || !mapReady) return;
+    webViewRef.current?.postMessage(JSON.stringify({
+      type: 'RECENTER',
+      lat:  userLocation.latitude,
+      lng:  userLocation.longitude,
+    }));
   };
 
-  // ── Memoized SOS markers ─────────────────────────────────────────────────
-  const renderedMarkers = useMemo(() => {
-    return sosData.map((item, idx) => {
-      const lat = parseFloat(item.lat);
-      const lng = parseFloat(item.lng);
-      if (isNaN(lat) || isNaN(lng)) return null;
+  // ── Build HTML — rebuild when BOTH location and sosData are ready ─────────
+  const mapHTML = useMemo(() => {
+    const lat = userLocation?.latitude  ?? DEFAULT_LAT;
+    const lng = userLocation?.longitude ?? DEFAULT_LNG;
+    return buildMapHTML(lat, lng, sosData);
+  }, [userLocation, sosData]); // ✅ fixed: depends on both
 
-      return (
-        <Marker
-          key={item.id || `sos-${idx}`}
-          coordinate={{ latitude: lat, longitude: lng }}
-          zIndex={15}
-          tracksViewChanges={false}
+  // ── WebView Error Fallback ────────────────────────────────────────────────
+  if (webViewError) {
+    return (
+      <View style={[styles.container, styles.errorContainer]}>
+        <Ionicons name="map-outline" size={48} color="#94a3b8" />
+        <Text style={styles.errorText}>Map failed to load</Text>
+        <TouchableOpacity
+          style={styles.retryBtn}
+          onPress={() => setWebViewError(false)}
         >
-          <View style={styles.sosMarkerShadow}>
-            <Ionicons name="alert-circle" size={38} color="#ef4444" />
-          </View>
-          <Callout tooltip>
-            <View style={styles.calloutContainer}>
-              <Text style={styles.calloutTitle}>
-                {item.type?.toUpperCase() || 'CRITICAL ALERT'}
-              </Text>
-              <Text style={styles.calloutDesc}>
-                {item.message || 'Emergency help requested. Proceed with caution.'}
-              </Text>
-              <View style={styles.calloutArrow} />
-            </View>
-          </Callout>
-        </Marker>
-      );
-    });
-  }, [sosData]);
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: isDarkMode ? '#020617' : '#f8fafc' }]}>
@@ -197,69 +262,25 @@ export default function RealTimeMapScreen() {
         </View>
       </SafeAreaView>
 
-      {/* ── Map ──────────────────────────────────────────────────────────── */}
-      {/* 
-        FIX 1: provider={PROVIDER_DEFAULT} — not null. 
-                null causes a blank map on Android physical devices.
-        FIX 2: mapType="none" + UrlTile = OpenStreetMap, no API key needed.
-      */}
-      <MapView
-        ref={mapRef}
+      {/* ── Leaflet Map via WebView ───────────────────────────────────────── */}
+      <WebView
+        ref={webViewRef}
         style={styles.map}
-        provider={PROVIDER_DEFAULT}
-        mapType="none"
-        showsUserLocation={false}      // We render our own animated marker below
-        showsMyLocationButton={false}
-        showsCompass={false}
-        moveOnMarkerPress={false}
-        initialRegion={{
-          latitude:       27.7172,
-          longitude:      85.3240,
-          latitudeDelta:  0.1,
-          longitudeDelta: 0.1,
-        }}
-      >
-        {/* OSM Tiles — works on Android & iOS, no API key */}
-        <UrlTile
-          urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maximumZ={19}
-          shouldReplaceMapContent={true}
-          flipY={false}
-          tileSize={256}
-          zIndex={1}
-        />
-
-        {/* FIX 3: User location marker — was declared in styles but never rendered */}
-        {userLocation && (
-          <Marker
-            coordinate={{
-              latitude:  userLocation.latitude,
-              longitude: userLocation.longitude,
-            }}
-            tracksViewChanges={false}
-            zIndex={20}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View style={styles.userMarkerWrapper}>
-              {/* Animated pulse ring */}
-              <Animated.View
-                style={[
-                  styles.userMarkerPulse,
-                  {
-                    transform: [{ scale: pulseAnim }],
-                    opacity:   pulseOpacity,
-                  },
-                ]}
-              />
-              {/* Core dot */}
-              <View style={styles.userMarkerCore} />
-            </View>
-          </Marker>
+        source={{ html: mapHTML }}
+        originWhitelist={['*']}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        startInLoadingState={true}
+        onLoadEnd={() => setMapReady(true)}
+        onError={() => setWebViewError(true)}
+        onHttpError={() => setWebViewError(true)}
+        renderLoading={() => (
+          <View style={styles.mapLoader}>
+            <ActivityIndicator size="large" color="#3b82f6" />
+            <Text style={{ color: '#3b82f6', marginTop: 10 }}>Loading Map...</Text>
+          </View>
         )}
-
-        {/* SOS markers */}
-        {renderedMarkers}
-      </MapView>
+      />
 
       {/* ── Floating Controls ────────────────────────────────────────────── */}
       <View style={styles.sideControls}>
@@ -271,7 +292,10 @@ export default function RealTimeMapScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.controlBtn, { backgroundColor: isDarkMode ? '#1e293b' : '#fff', marginTop: 12 }]}
+          style={[
+            styles.controlBtn,
+            { backgroundColor: isDarkMode ? '#1e293b' : '#fff', marginTop: 12 },
+          ]}
           onPress={recenter}
         >
           <Ionicons name="navigate" size={20} color="#3b82f6" />
@@ -329,113 +353,80 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   map:       { flex: 1 },
 
-  // Header
+  mapLoader: {
+    flex: 1, justifyContent: 'center',
+    alignItems: 'center', backgroundColor: '#f8fafc',
+  },
+
+  errorContainer: {
+    justifyContent: 'center',
+    alignItems:     'center',
+    backgroundColor: '#0f172a',
+  },
+  errorText: {
+    color:      '#94a3b8',
+    fontSize:   16,
+    marginTop:  16,
+    fontWeight: '600',
+  },
+  retryBtn: {
+    marginTop:       16,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    backgroundColor: '#2563eb',
+    borderRadius:    12,
+  },
+  retryText: { color: '#fff', fontWeight: '700' },
+
   safeArea: { zIndex: 30, elevation: 10 },
   statusBarContent: {
-    flexDirection:   'row',
-    height:          45,
-    justifyContent:  'center',
-    alignItems:      'center',
+    flexDirection:     'row',
+    height:            45,
+    justifyContent:    'center',
+    alignItems:        'center',
     paddingHorizontal: 20,
   },
   statusText: {
-    color:       '#FFF',
-    fontWeight:  '900',
-    fontSize:    10,
+    color:         '#FFF',
+    fontWeight:    '900',
+    fontSize:      10,
     letterSpacing: 2,
-    marginLeft:  8,
+    marginLeft:    8,
   },
 
-  // Controls
   sideControls: { position: 'absolute', top: 110, right: 16, zIndex: 20 },
   controlBtn: {
-    width:         46,
-    height:        46,
-    borderRadius:  14,
+    width:          46,
+    height:         46,
+    borderRadius:   14,
     justifyContent: 'center',
-    alignItems:    'center',
-    elevation:     8,
-    shadowOpacity: 0.3,
-    shadowRadius:  4,
-    shadowOffset:  { width: 0, height: 2 },
-  },
-
-  // User marker
-  userMarkerWrapper: {
-    width:          44,
-    height:         44,
     alignItems:     'center',
-    justifyContent: 'center',
-  },
-  userMarkerPulse: {
-    position:     'absolute',
-    width:        44,
-    height:       44,
-    borderRadius: 22,
-    backgroundColor: '#3b82f6',
-  },
-  userMarkerCore: {
-    width:        16,
-    height:       16,
-    borderRadius: 8,
-    backgroundColor: '#3b82f6',
-    borderWidth:  2.5,
-    borderColor:  '#fff',
-    elevation:    4,
+    elevation:      8,
+    shadowOpacity:  0.3,
+    shadowRadius:   4,
+    shadowOffset:   { width: 0, height: 2 },
   },
 
-  // SOS marker
-  sosMarkerShadow: {
-    shadowColor:   '#ef4444',
-    shadowOpacity: 0.5,
-    shadowRadius:  8,
-    elevation:     5,
-  },
-
-  // Callout
-  calloutContainer: {
-    backgroundColor: '#0f172a',
-    borderRadius:    12,
-    padding:         15,
-    width:           220,
-    marginBottom:    10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#ef4444',
-  },
-  calloutTitle: { color: '#ef4444', fontWeight: '900', fontSize: 12, marginBottom: 4 },
-  calloutDesc:  { color: '#cbd5e1', fontSize: 12, lineHeight: 16 },
-  calloutArrow: {
-    borderTopColor:    '#0f172a',
-    borderTopWidth:    10,
-    borderRightColor:  'transparent',
-    borderRightWidth:  10,
-    borderLeftColor:   'transparent',
-    borderLeftWidth:   10,
-    alignSelf:         'center',
-    marginBottom:      -25,
-  },
-
-  // Bottom panel
   bottomPanel: {
-    position:       'absolute',
-    bottom:         30,
-    left:           16,
-    right:          16,
-    flexDirection:  'row',
+    position:        'absolute',
+    bottom:          30,
+    left:            16,
+    right:           16,
+    flexDirection:   'row',
     paddingVertical: 18,
-    borderRadius:   24,
-    borderWidth:    1,
-    borderColor:    'rgba(51,65,85,0.4)',
-    elevation:      15,
-    justifyContent: 'space-evenly',
+    borderRadius:    24,
+    borderWidth:     1,
+    borderColor:     'rgba(51,65,85,0.4)',
+    elevation:       15,
+    justifyContent:  'space-evenly',
   },
   metricItem:  { alignItems: 'center', minWidth: 80 },
   metricLabel: { fontSize: 8, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
   metricValue: { fontSize: 16, fontWeight: '900' },
   verticalDivider: {
-    width:      1,
-    height:     '60%',
+    width:           1,
+    height:          '60%',
     backgroundColor: 'rgba(51,65,85,0.2)',
-    alignSelf:  'center',
+    alignSelf:       'center',
   },
 });

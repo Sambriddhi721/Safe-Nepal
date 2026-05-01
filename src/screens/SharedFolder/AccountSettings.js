@@ -14,18 +14,8 @@ import { AuthContext } from '../../context/AuthContext';
 
 export default function AccountSettings({ navigation }) {
   const { colors, theme } = useContext(ThemeContext);
-  // Destructure switchRole and signOut to make the buttons functional
-  const { user, switchRole, signOut } = useContext(AuthContext);
+  const { user } = useContext(AuthContext); // Only user needed here for profile context
   const isDarkMode = theme === 'dark';
-
-  const handleRoleSwitch = async () => {
-    try {
-      await switchRole();
-      // AppNavigator will automatically re-route based on the new role
-    } catch (error) {
-      console.error("Role switch failed", error);
-    }
-  };
 
   const NavRow = ({ label, icon, onPress, showBorder = true }) => (
     <TouchableOpacity 
@@ -52,18 +42,21 @@ export default function AccountSettings({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
-      
       {/* HEADER */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
-          style={styles.backBtn}
-        >
-          <Ionicons name="chevron-back" size={28} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Account Settings</Text>
-        <View style={{ width: 28 }} /> 
-      </View>
+<View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 40 }]}>
+  <TouchableOpacity 
+    onPress={() => navigation.goBack()} 
+    style={styles.backBtn}
+  >
+    <Ionicons name="chevron-back" size={28} color={colors.text} />
+  </TouchableOpacity>
+  
+  <Text style={[styles.headerTitle, { color: colors.text }]}>Account Settings</Text>
+  
+  {/* Corrected: Changed <div> to <View> */}
+  <View style={{ width: 28 }} /> 
+</View>
+     
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 
@@ -123,28 +116,6 @@ export default function AccountSettings({ navigation }) {
             showBorder={false}
           />
         </View>
-
-        {/* --- NEW BUTTONS AT THE BOTTOM --- */}
-        
-        {/* LOGOUT BUTTON */}
-        <TouchableOpacity 
-          style={[styles.logoutBtn, { backgroundColor: isDarkMode ? '#1e293b' : '#fee2e2' }]} 
-          onPress={signOut}
-        >
-          <Feather name="log-out" size={20} color="#ef4444" />
-          <Text style={styles.logoutText}>Log Out from Device</Text>
-        </TouchableOpacity>
-
-        {/* SWITCH ROLE BUTTON */}
-        <TouchableOpacity 
-          style={[styles.switchModeBtn, { backgroundColor: '#bef264' }]} 
-          onPress={handleRoleSwitch}
-        >
-          <Ionicons name="shield-checkmark" size={20} color="#000" />
-          <Text style={styles.switchModeText}>
-            Switch to {user?.role === 'RESPONDER' ? 'Citizen' : 'Police'} Mode
-          </Text>
-        </TouchableOpacity>
 
       </ScrollView>
     </View>
@@ -229,33 +200,4 @@ const styles = StyleSheet.create({
     marginRight: 15 
   },
   rowLabel: { fontSize: 16, fontWeight: '600' },
-
-  // --- NEW STYLES ---
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 18,
-    borderRadius: 24,
-    marginTop: 10,
-    marginBottom: 10,
-  },
-  logoutText: {
-    color: '#ef4444',
-    fontWeight: '800',
-    marginLeft: 10,
-  },
-  switchModeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 18,
-    borderRadius: 24,
-    marginBottom: 40,
-  },
-  switchModeText: {
-    color: '#000',
-    fontWeight: '900',
-    marginLeft: 10,
-  },
 });

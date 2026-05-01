@@ -1,44 +1,86 @@
-import React, { useContext, useState, useEffect } from "react";
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import React, { useContext, useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Animated,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import axios from "axios";
+import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../context/AuthContext";
 import { API_BASE } from "../../config";
 
-// Ensure this matches your backend IP
-
 export default function EmailVerificationScreen() {
   const { user, token, signOut, updateUser } = useContext(AuthContext);
+
   const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(false);
+  const [countdown, setCountdown] = useState(0); // resend cooldown in seconds
+  const [dots, setDots] = useState(".");         // animated "Waiting..." dots
 
-  // 1. Polling Effect: Checks backend every 3 seconds to see if verified
+  // ── refs so interval callbacks always see fresh values ───────────────────
+  const tokenRef = useRef(token);
+  const updateUserRef = useRef(updateUser);
+  useEffect(() => { tokenRef.current = token; }, [token]);
+  useEffect(() => { updateUserRef.current = updateUser; }, [updateUser]);
+
+  // ── animated pulse on the email icon ─────────────────────────────────────
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    let interval;
-    
-    if (token) {
-      interval = setInterval(async () => {
-        try {
-          const response = await axios.get(`${API_BASE}/api/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 800, useNativeDriver: true }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, []);
 
-          // If backend says verified, update global state
-          if (response.data.user.email_verified) {
-            clearInterval(interval);
-            updateUser(response.data.user); // This triggers navigation to Home
-          }
-        } catch (error) {
-          console.log("Waiting for verification...");
+  // ── dots animation ("Waiting." → ".." → "...") ──────────────────────────
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDots(d => (d.length >= 3 ? "." : d + "."));
+    }, 600);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── polling: check verification status every 3 seconds ──────────────────
+  useEffect(() => {
+    if (!token) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${tokenRef.current}` },
+        });
+
+        if (res.data?.user?.email_verified) {
+          clearInterval(interval);
+          updateUserRef.current(res.data.user); // triggers AppNavigator → Home
         }
-      }, 3000);
-    }
+      } catch (err) {
+        // silently ignore — network blip or token expiry
+        console.log("Polling check failed:", err?.response?.status);
+      }
+    }, 3000);
 
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, [token]);
+    return () => clearInterval(interval);
+  }, []); // runs once on mount — refs keep values fresh
 
+  // ── resend cooldown countdown ─────────────────────────────────────────────
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const id = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [countdown]);
+
+  // ── resend email ──────────────────────────────────────────────────────────
   const resendEmail = async () => {
+    if (countdown > 0) return;
     setLoading(true);
     try {
       await axios.post(
@@ -46,112 +88,218 @@ export default function EmailVerificationScreen() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      Alert.alert("Success", "A new verification link has been sent to your inbox.");
-    } catch (error) {
-      Alert.alert("Error", "Could not resend email. Please try again later.");
+      setCountdown(60); // lock button for 60 seconds
+      Alert.alert(
+        "✅ Email Sent",
+        "A new verification link has been sent. Check your inbox and spam folder."
+      );
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        "Could not resend email. Please try again.";
+      Alert.alert("Error", msg);
     } finally {
       setLoading(false);
     }
   };
 
+  // ── logout confirmation ───────────────────────────────────────────────────
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Logout", style: "destructive", onPress: signOut },
+      ]
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <LinearGradient
-      colors={["#0f2027", "#203a43", "#2c5364"]}
+      colors={["#0a0f1e", "#0f1e36", "#0a1628"]}
       style={styles.container}
     >
       <View style={styles.card}>
-        <View style={styles.iconContainer}>
-          <ActivityIndicator size="large" color="#1e90ff" />
-        </View>
+
+        {/* ── Animated Icon ── */}
+        <Animated.View
+          style={[styles.iconCircle, { transform: [{ scale: pulseAnim }] }]}
+        >
+          <Ionicons name="mail-unread-outline" size={40} color="#1e90ff" />
+        </Animated.View>
 
         <Text style={styles.title}>Verify Your Email</Text>
 
         <Text style={styles.text}>
-          Hi <Text style={{ fontWeight: 'bold' }}>{user?.full_name || "User"}</Text>, 
-          we've sent a link to <Text style={{ color: '#1e90ff' }}>{user?.email}</Text>.
+          Hi{" "}
+          <Text style={styles.bold}>{user?.full_name || "User"}</Text>, we've
+          sent a verification link to{"\n"}
+          <Text style={styles.emailHighlight}>
+            {user?.email || "your email"}
+          </Text>
         </Text>
 
         <Text style={styles.subText}>
-          Please check your inbox (and spam folder) and click the link to activate your account.
+          Click the link in the email to activate your account. Check your spam
+          folder if you don't see it.
         </Text>
 
-        <TouchableOpacity 
-          style={[styles.button, loading && { opacity: 0.7 }]} 
-          onPress={resendEmail}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? "Sending..." : "Resend Verification Email"}
+        {/* ── Polling Status ── */}
+        <View style={styles.pollingRow}>
+          <ActivityIndicator size="small" color="#1e90ff" />
+          <Text style={styles.pollingText}>
+            Checking verification status{dots}
           </Text>
+        </View>
+
+        {/* ── Resend Button ── */}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            (loading || countdown > 0) && styles.buttonDisabled,
+          ]}
+          onPress={resendEmail}
+          disabled={loading || countdown > 0}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {countdown > 0
+                ? `Resend available in ${countdown}s`
+                : "Resend Verification Email"}
+            </Text>
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={signOut} style={styles.logoutBtn}>
-          <Text style={styles.logout}>Logout & Try Different Email</Text>
+        {/* ── Logout ── */}
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+          <Ionicons name="log-out-outline" size={16} color="#ff5252" />
+          <Text style={styles.logoutText}>Logout & Try Different Email</Text>
         </TouchableOpacity>
       </View>
-      
-      <Text style={styles.footerText}>Waiting for verification...</Text>
+
+      <Text style={styles.footerText}>
+        This page will redirect automatically once verified.
+      </Text>
     </LinearGradient>
   );
 }
 
+// ─── styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 24 },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 24,
+  },
+
   card: {
-    backgroundColor: "#0d1b2a",
-    borderRadius: 25,
+    backgroundColor: "rgba(15, 22, 40, 0.97)",
+    borderRadius: 24,
     padding: 30,
-    elevation: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    elevation: 12,
     shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
   },
-  iconContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
+
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(30, 144, 255, 0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 22,
+    borderWidth: 1,
+    borderColor: "rgba(30, 144, 255, 0.3)",
   },
+
   title: {
-    color: "#fff",
+    color: "#FFF",
     fontSize: 24,
     fontWeight: "800",
     textAlign: "center",
-    marginBottom: 15,
+    marginBottom: 14,
+    letterSpacing: 0.4,
   },
-  text: { 
-    color: "#e0e0e0", 
-    textAlign: "center", 
-    fontSize: 16,
-    lineHeight: 22,
-    marginBottom: 10 
-  },
-  subText: {
-    color: "#94a3b8",
+
+  text: {
+    color: "#ccd",
     textAlign: "center",
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 30,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 10,
   },
+  bold: { fontWeight: "bold", color: "#FFF" },
+  emailHighlight: { color: "#1e90ff", fontWeight: "600" },
+
+  subText: {
+    color: "#778",
+    textAlign: "center",
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 22,
+  },
+
+  pollingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 24,
+    backgroundColor: "rgba(30,144,255,0.08)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(30,144,255,0.2)",
+  },
+  pollingText: {
+    color: "#778",
+    fontSize: 13,
+    fontStyle: "italic",
+  },
+
   button: {
     backgroundColor: "#1e90ff",
     paddingVertical: 16,
-    borderRadius: 15,
+    borderRadius: 12,
     alignItems: "center",
+    width: "100%",
   },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  buttonDisabled: {
+    backgroundColor: "#1a2a44",
+    borderWidth: 1,
+    borderColor: "#1e3a5f",
+  },
+  buttonText: { color: "#FFF", fontWeight: "700", fontSize: 15 },
+
   logoutBtn: {
     marginTop: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  logout: {
-    textAlign: "center",
+  logoutText: {
     color: "#ff5252",
     fontWeight: "600",
     fontSize: 14,
   },
+
   footerText: {
-    color: "#94a3b8",
+    color: "#445",
     textAlign: "center",
     marginTop: 20,
     fontSize: 12,
-    fontStyle: 'italic'
-  }
+    fontStyle: "italic",
+  },
 });
