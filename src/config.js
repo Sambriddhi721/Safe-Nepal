@@ -1,3 +1,8 @@
-// Central API base for Ngrok tunnel testing
-// This allows your phone (on Expo tunnel) to talk to your local backend
-export const API_BASE = "https://thunderingly-cuspidat-e-app.ngrok-free.app";
+import axios from "axios";
+
+export const API_BASE = "https://thunderingly-cuspidate-maud.ngrok-free.dev"; // ← new URL
+
+axios.defaults.baseURL = API_BASE;
+axios.defaults.headers.common["Content-Type"] = "application/json";
+axios.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
+axios.defaults.timeout = 10000;

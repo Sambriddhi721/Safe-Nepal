@@ -1,118 +1,153 @@
-import React, { createContext, useState, useMemo, useCallback, useEffect } from "react";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, db } from './firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import React, {
+  createContext,
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+} from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth, db } from "./firebaseConfig";
+import { signOut as firebaseSignOut } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
 export const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
-  // Initial state with bypass safety
-  const [user, setUser] = useState({
-    uid: "bypass-123",
-    full_name: "Sambriddhi Dawadi",
-    email: "sambriddhidawadi6@gmail.com",
-    role: "USER" 
-  });
-  
-  const [token, setToken] = useState("bypass-token");
-  const [loading, setLoading] = useState(true); // Start true to check storage first
+const normalizeRole = (role) =>
+  role ? role.toUpperCase() : "CITIZEN";
 
-  // 1. Load persisted data on mount
+const safeParse = (str) => {
+  try {
+    return str ? JSON.parse(str) : null;
+  } catch {
+    return null;
+  }
+};
+
+const STORAGE_USER_KEY  = "user_data";
+const STORAGE_TOKEN_KEY = "user_token";
+
+// ─── TODO: REMOVE BEFORE PRODUCTION ──────────────────────────────────────────
+const DEV_MOCK_USER = {
+  id: "dev-123",
+  name: "Test Officer",
+  role: "POLICE",
+  token: "dev-token",
+  email: "officer@test.com",
+  email_verified: true,        // ← bypasses email verification gate
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function AuthProvider({ children }) {
+  // TODO: REMOVE DEV BYPASS — change both back to useState(null)
+  const [user,    setUser]    = useState(DEV_MOCK_USER);
+  const [token,   setToken]   = useState("dev-token");
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const loadPersistedUser = async () => {
+    const restoreSession = async () => {
       try {
-        const savedUser = await AsyncStorage.getItem('user_data');
-        if (savedUser) {
-          const parsed = JSON.parse(savedUser);
-          setUser(parsed);
-          // Set token to bypass-token if real one isn't there yet so app doesn't kick user to Login
-          setToken("bypass-token"); 
-        }
+        // TODO: REMOVE DEV BYPASS — uncomment this block when done
+        // const [savedUser, savedToken] = await AsyncStorage.multiGet([
+        //   STORAGE_USER_KEY,
+        //   STORAGE_TOKEN_KEY,
+        // ]);
+        // const parsedUser  = safeParse(savedUser[1]);
+        // const parsedToken = savedToken[1];
+        // if (parsedUser && parsedToken) {
+        //   setUser(parsedUser);
+        //   setToken(parsedToken);
+        // }
       } catch (e) {
-        console.error("Failed to load persisted user", e);
+        console.error("[AuthContext] Failed to restore session:", e);
       } finally {
-        setLoading(false);
+        setLoading(false); // ← must always run or app spins forever
       }
     };
-    loadPersistedUser();
+
+    restoreSession();
   }, []);
 
-  // 2. Firebase Listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDocRef = doc(db, "users", firebaseUser.uid);
-          const userSnap = await getDoc(userDocRef);
+  const signIn = useCallback(async (userData, accessToken) => {
+    try {
+      setLoading(true);
+      const normalizedUser = {
+        ...userData,
+        role: normalizeRole(userData.role),
+      };
+      await AsyncStorage.multiSet([
+        [STORAGE_USER_KEY,  JSON.stringify(normalizedUser)],
+        [STORAGE_TOKEN_KEY, accessToken],
+      ]);
+      setUser(normalizedUser);
+      setToken(accessToken);
+    } catch (e) {
+      console.error("[AuthContext] signIn error:", e);
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-          let userData;
-          if (userSnap.exists()) {
-            userData = { uid: firebaseUser.uid, email: firebaseUser.email, ...userSnap.data() };
-          } else {
-            userData = { 
-              uid: firebaseUser.uid, 
-              email: firebaseUser.email, 
-              full_name: firebaseUser.displayName || "User",
-              role: "USER" 
-            };
-            await setDoc(userDocRef, userData);
-          }
-
-          const idToken = await firebaseUser.getIdToken();
-          setUser(userData);
-          setToken(idToken);
-          await AsyncStorage.setItem('user_data', JSON.stringify(userData));
-        } catch (e) {
-          console.error("Auth sync error:", e);
-        }
+  const signOut = useCallback(async () => {
+    try {
+      if (auth?.currentUser) {
+        await firebaseSignOut(auth);
       }
-    });
-
-    return unsubscribe;
+      await AsyncStorage.multiRemove([STORAGE_USER_KEY, STORAGE_TOKEN_KEY]);
+    } catch (e) {
+      console.error("[AuthContext] signOut error:", e);
+    } finally {
+      setUser(null);
+      setToken(null);
+    }
   }, []);
 
-  // 3. Optimized Switch Role
+  const updateUser = useCallback(async (updatedData) => {
+    try {
+      const merged = { ...user, ...updatedData };
+      setUser(merged);
+      await AsyncStorage.setItem(STORAGE_USER_KEY, JSON.stringify(merged));
+    } catch (e) {
+      console.error("[AuthContext] updateUser error:", e);
+    }
+  }, [user]);
+
   const switchRole = useCallback(async (targetRole = null) => {
     if (!user) return false;
-
     try {
-      let newRole;
-      if (targetRole) {
-        // Normalize "USER" to "CITIZEN" if that's what your UI expects, 
-        // but let's keep it consistent with the Navigator "RESPONDER" logic.
-        newRole = targetRole;
-      } else {
-        newRole = user.role === "RESPONDER" ? "USER" : "RESPONDER";
-      }
+      const newRole = targetRole
+        ? targetRole.toUpperCase()
+        : user.role === "RESPONDER" ? "CITIZEN" : "RESPONDER";
 
-      // 1. Sync with Firebase (if online)
-      if (auth.currentUser) {
+      if (auth?.currentUser) {
         const userRef = doc(db, "users", auth.currentUser.uid);
         await setDoc(userRef, { role: newRole }, { merge: true });
       }
 
-      // 2. Update Local State (This triggers the Navigator swap)
       const updatedUser = { ...user, role: newRole };
       setUser(updatedUser);
-      
-      // 3. Persist for next app launch
-      await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
-      
-      return true; 
+      await AsyncStorage.setItem(STORAGE_USER_KEY, JSON.stringify(updatedUser));
+      return true;
     } catch (e) {
-      console.error("Role Switch Error:", e);
+      console.error("[AuthContext] switchRole error:", e);
       throw e;
     }
-  }, [user]); 
+  }, [user]);
 
-  const authValue = useMemo(() => ({
-    user,
-    token,
-    loading,
-    switchRole,
-    role: user?.role || "USER", // This is what AppNavigator looks at
-  }), [user, token, loading, switchRole]);
+  const authValue = useMemo(
+    () => ({
+      user,
+      token,
+      loading,
+      role: user?.role || "CITIZEN",
+      signIn,
+      signOut,
+      logout: signOut,
+      updateUser,
+      switchRole,
+    }),
+    [user, token, loading, signIn, signOut, updateUser, switchRole]
+  );
 
   return (
     <AuthContext.Provider value={authValue}>

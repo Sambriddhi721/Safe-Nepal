@@ -3,8 +3,18 @@
     "name": "SafeNepalApp",
     "slug": "SafeNepalApp",
     "version": "1.0.0",
-    "scheme": "safenepalapp",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#020617"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "scheme": "safenepalapp",
     "ios": {
       "bundleIdentifier": "com.esprihya.safenepalapp",
       "supportsTablet": true,
@@ -13,7 +23,7 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "SafeNepalApp needs background location for emergency tracking.",
         "NSPhotoLibraryUsageDescription": "Safe Nepal needs access to your photos to let you update your profile picture.",
         "NSCameraUsageDescription": "Safe Nepal needs camera access to report disaster evidence in real-time.",
-        "NSFaceIDUsageDescription": "Safe Nepal requires FaceID to verify Responder identity and secure Police Mode."
+        "NSFaceIDUsageDescription": "Safe Nepal requires FaceID to verify Responder identity and secure Police Mode"
       }
     },
     "android": {
@@ -21,11 +31,6 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#020617"
-      },
-      "config": {
-        "googleMaps": {
-          "apiKey": ""
-        }
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
@@ -46,7 +51,7 @@
       [
         "react-native-maps",
         {
-          "googleMapsApiKey": ""
+          "useGoogleMapsOnAndroid": false
         }
       ],
       [
@@ -64,20 +69,21 @@
           "sounds": []
         }
       ],
-     [
-  "expo-build-properties",
-  {
-    "android": {
-      "newArchEnabled": false,
-      "usesCleartextTraffic": true
-    },
-    "ios": {
-      "newArchEnabled": false,
-      "useFrameworks": "static"
-    }
-  }
-],
-      "expo-local-authentication"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "newArchEnabled": false,
+            "usesCleartextTraffic": true
+          },
+          "ios": {
+            "newArchEnabled": false,
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      "expo-local-authentication",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
